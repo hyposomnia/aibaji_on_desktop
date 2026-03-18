@@ -1,0 +1,15 @@
+{
+  "name": "aibaji",
+  "owner": {
+    "name": "hyposomnia",
+    "url": "https://github.com/hyposomnia"
+  },
+  "plugins": [
+    {
+      "name": "aibaji",
+      "source": "./plugin",
+      "description": "将 Claude Code 工作状态实时发送到爱巴基桌面伴侣应用",
+      "version": "1.0.0"
+    }
+  ]
+}

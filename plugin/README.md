@@ -2,30 +2,30 @@
 
 将 Claude Code 的工作状态实时发送到爱巴基桌面伴侣应用。
 
-## 安装
+## 安装（一键安装）
 
-1. 打开 Claude Code 设置（`~/.claude/settings.json`）
-2. 在 `plugins` 数组中添加本插件路径：
-
-```json
-{
-  "plugins": ["/path/to/aibaji_on_desktop/plugin"]
-}
-```
-
-或者手动将 hooks 配置到 `~/.claude/settings.json` 的 `hooks` 字段：
+**第一步：** 在 `~/.claude/settings.json` 中注册插件源（只需一次）：
 
 ```json
 {
-  "hooks": {
-    "PreToolUse":       [{"matcher": "", "hooks": [{"type": "command", "command": "bash /path/to/plugin/hooks/forward.sh"}]}],
-    "PostToolUse":      [{"matcher": "", "hooks": [{"type": "command", "command": "bash /path/to/plugin/hooks/forward.sh"}]}],
-    "Stop":             [{"matcher": "", "hooks": [{"type": "command", "command": "bash /path/to/plugin/hooks/forward.sh"}]}],
-    "Notification":     [{"matcher": "", "hooks": [{"type": "command", "command": "bash /path/to/plugin/hooks/forward.sh"}]}],
-    "UserPromptSubmit": [{"matcher": "", "hooks": [{"type": "command", "command": "bash /path/to/plugin/hooks/forward.sh"}]}]
+  "extraKnownMarketplaces": {
+    "aibaji": {
+      "source": {
+        "source": "github",
+        "repo": "hyposomnia/aibaji_on_desktop"
+      }
+    }
   }
 }
 ```
+
+**第二步：** 在 Claude Code 中执行：
+
+```
+/plugins add aibaji@aibaji
+```
+
+安装完成后插件会自动注册所有 Hook，无需手动配置。
 
 ## 配置
 
