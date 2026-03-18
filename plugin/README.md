@@ -4,11 +4,11 @@
 
 ## 安装（一键安装）
 
-在 Claude Code 中执行以下两条命令：
+在 Claude Code 中依次执行以下两条命令：
 
 ```
 /plugin marketplace add hyposomnia/aibaji_on_desktop
-/plugins add aibaji@aibaji
+/plugin add aibaji@aibaji_on_desktop
 ```
 
 安装完成后插件会自动注册所有 Hook，无需手动配置。
