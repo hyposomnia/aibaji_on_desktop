@@ -52,8 +52,6 @@ export function createWindow(): BrowserWindow {
   // 加载渲染进程
   if (process.env.ELECTRON_RENDERER_URL) {
     mainWindow.loadURL(process.env.ELECTRON_RENDERER_URL)
-    // dev 模式自动打开 DevTools 便于调试
-    mainWindow.webContents.openDevTools({ mode: 'detach' })
   } else {
     mainWindow.loadFile(path.join(__dirname, '../../dist/index.html'))
   }

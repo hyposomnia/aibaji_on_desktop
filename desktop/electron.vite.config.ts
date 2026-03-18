@@ -17,6 +17,7 @@ export default defineConfig({
   renderer: {
     plugins: [react()],
     build: {
+      outDir: 'dist',
       rollupOptions: {
         input: 'src/renderer/index.html'
       }
