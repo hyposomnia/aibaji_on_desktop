@@ -83,7 +83,7 @@ let _store: StoreType | null = null
 
 async function getStore(): Promise<StoreType> {
   if (_store) return _store
-  const { default: Store } = await import('electron-store') as { default: new (opts: unknown) => StoreType }
+  const { default: Store } = await import('electron-store') as unknown as { default: new (opts: unknown) => StoreType }
   _store = new Store({
     defaults,
     schema: undefined, // 不使用 schema 验证，直接存储

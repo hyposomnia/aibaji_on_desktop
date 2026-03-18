@@ -1,4 +1,5 @@
-import { Tray, Menu, MenuItem, app, nativeImage } from 'electron'
+import { Tray, Menu, app, nativeImage } from 'electron'
+import type { MenuItemConstructorOptions } from 'electron'
 import { getConfig, setConfig } from './store'
 import { getCharacters, getOutfits } from './characterLoader'
 import { setCharacterOutfit } from './videoQueue'
@@ -26,43 +27,39 @@ function createTrayIcon(): Electron.NativeImage {
 /**
  * 创建大小子菜单
  */
-function buildSizeMenu(currentScale: number): MenuItem[] {
+function buildSizeMenu(currentScale: number): MenuItemConstructorOptions[] {
   const scales = [0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.2, 1.5]
   const labels = ['50%', '60%', '70%', '80%', '90%', '100%', '120%', '150%']
 
-  return scales.map((scale, i) =>
-    new MenuItem({
-      label: labels[i],
-      type: 'radio',
-      checked: Math.abs(currentScale - scale) < 0.01,
-      click: () => {
-        updateScale(scale)
-      },
-    })
-  )
+  return scales.map((scale, i): MenuItemConstructorOptions => ({
+    label: labels[i],
+    type: 'radio',
+    checked: Math.abs(currentScale - scale) < 0.01,
+    click: () => {
+      updateScale(scale)
+    },
+  }))
 }
 
 /**
  * 创建透明度子菜单
  */
-function buildOpacityMenu(currentOpacity: number): MenuItem[] {
+function buildOpacityMenu(currentOpacity: number): MenuItemConstructorOptions[] {
   const opacities = [0.2, 0.4, 0.6, 0.8, 1.0]
   const labels = ['20%', '40%', '60%', '80%', '100%']
 
-  return opacities.map((opacity, i) =>
-    new MenuItem({
-      label: labels[i],
-      type: 'radio',
-      checked: Math.abs(currentOpacity - opacity) < 0.01,
-      click: () => {
-        const win = getMainWindow()
-        if (win) {
-          win.setOpacity(opacity)
-          setConfig({ window: { ...getConfig().window, opacity } })
-        }
-      },
-    })
-  )
+  return opacities.map((opacity, i): MenuItemConstructorOptions => ({
+    label: labels[i],
+    type: 'radio',
+    checked: Math.abs(currentOpacity - opacity) < 0.01,
+    click: () => {
+      const win = getMainWindow()
+      if (win) {
+        win.setOpacity(opacity)
+        setConfig({ window: { ...getConfig().window, opacity } })
+      }
+    },
+  }))
 }
 
 /**
@@ -75,51 +72,46 @@ function buildContextMenu(): Electron.Menu {
 
   // 角色列表
   const characters = getCharacters(dataPath)
-  const charMenuItems = characters.map(
-    (char) =>
-      new MenuItem({
-        label: char,
-        type: 'radio',
-        checked: char === currentChar,
-        click: () => {
-          const outfits = getOutfits(dataPath, char)
-          const defaultOutfit = outfits[0] || ''
-          setConfig({ character: { ...config.character, name: char, outfit: defaultOutfit } })
-          setCharacterOutfit(char, defaultOutfit)
-          refreshTray()
-        },
-      })
+  const charMenuItems: MenuItemConstructorOptions[] = characters.map(
+    (char): MenuItemConstructorOptions => ({
+      label: char,
+      type: 'radio',
+      checked: char === currentChar,
+      click: () => {
+        const outfits = getOutfits(dataPath, char)
+        const defaultOutfit = outfits[0] || ''
+        setConfig({ character: { ...config.character, name: char, outfit: defaultOutfit } })
+        setCharacterOutfit(char, defaultOutfit)
+        refreshTray()
+      },
+    })
   )
 
   // 服装列表
   const outfits = currentChar ? getOutfits(dataPath, currentChar) : []
-  const outfitMenuItems = outfits.map(
-    (outfit) =>
-      new MenuItem({
-        label: outfit,
-        type: 'radio',
-        checked: outfit === currentOutfit,
-        click: () => {
-          setConfig({ character: { ...config.character, outfit } })
-          setCharacterOutfit(currentChar, outfit)
-          refreshTray()
-        },
-      })
+  const outfitMenuItems: MenuItemConstructorOptions[] = outfits.map(
+    (outfit): MenuItemConstructorOptions => ({
+      label: outfit,
+      type: 'radio',
+      checked: outfit === currentOutfit,
+      click: () => {
+        setConfig({ character: { ...config.character, outfit } })
+        setCharacterOutfit(currentChar, outfit)
+        refreshTray()
+      },
+    })
   )
 
-  const template: (Electron.MenuItemConstructorOptions | MenuItem)[] = [
+  const template: MenuItemConstructorOptions[] = [
     { label: '爱巴基桌面版', enabled: false },
     { type: 'separator' },
     {
       label: `角色：${currentChar || '未选择'}`,
-      submenu: charMenuItems.length > 0 ? charMenuItems : [new MenuItem({ label: '无可用角色', enabled: false })],
+      submenu: charMenuItems.length > 0 ? charMenuItems : [{ label: '无可用角色', enabled: false }],
     },
     {
       label: `服装：${currentOutfit || '未选择'}`,
-      submenu:
-        outfitMenuItems.length > 0
-          ? outfitMenuItems
-          : [new MenuItem({ label: '无可用服装', enabled: false })],
+      submenu: outfitMenuItems.length > 0 ? outfitMenuItems : [{ label: '无可用服装', enabled: false }],
     },
     { type: 'separator' },
     {

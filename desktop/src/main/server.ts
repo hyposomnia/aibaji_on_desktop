@@ -60,7 +60,7 @@ export async function startServer(): Promise<void> {
       console.log(`[aibaji] HTTP server listening on http://127.0.0.1:${port}`)
       resolve()
     })
-    httpServer.on('error', reject)
+    httpServer!.on('error', reject)
   })
 }
 
