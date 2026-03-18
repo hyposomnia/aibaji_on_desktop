@@ -1,0 +1,122 @@
+import { ipcMain } from 'electron'
+
+export interface AppConfig {
+  server: {
+    port: number
+    token: string
+  }
+  character: {
+    name: string
+    outfit: string
+    dataPath: string
+  }
+  window: {
+    scale: number
+    opacity: number
+    locked: boolean
+    x: number
+    y: number
+    baseWidth: number
+    baseHeight: number
+  }
+  llm: {
+    apiMode: 'openai' | 'anthropic'
+    apiKey: string
+    baseURL: string
+    model: string
+    persona: string
+  }
+  tts: {
+    enabled: boolean
+    provider: 'minimax'
+    apiKey: string
+    model: string
+    voiceId: string
+  }
+}
+
+const defaults: AppConfig = {
+  server: {
+    port: 5287,
+    token: '',
+  },
+  character: {
+    name: '',
+    outfit: '',
+    dataPath: '',
+  },
+  window: {
+    scale: 1.0,
+    opacity: 1.0,
+    locked: false,
+    x: 100,
+    y: 100,
+    baseWidth: 400,
+    baseHeight: 600,
+  },
+  llm: {
+    apiMode: 'openai',
+    apiKey: '',
+    baseURL: '',
+    model: 'gpt-4o-mini',
+    persona: '可爱的二次元角色',
+  },
+  tts: {
+    enabled: false,
+    provider: 'minimax',
+    apiKey: '',
+    model: 'speech-01',
+    voiceId: '',
+  },
+}
+
+// electron-store v10 是 ESM only，需要动态导入
+// 使用懒加载模式
+type StoreType = {
+  store: AppConfig
+  get: (key: string) => unknown
+  set: (key: string | Record<string, unknown>, value?: unknown) => void
+  reset: (...keys: string[]) => void
+}
+
+let _store: StoreType | null = null
+
+async function getStore(): Promise<StoreType> {
+  if (_store) return _store
+  const { default: Store } = await import('electron-store') as { default: new (opts: unknown) => StoreType }
+  _store = new Store({
+    defaults,
+    schema: undefined, // 不使用 schema 验证，直接存储
+  })
+  return _store
+}
+
+// 同步获取配置（需先调用 initStore）
+let _storeSync: StoreType | null = null
+
+export async function initStore(): Promise<void> {
+  _storeSync = await getStore()
+}
+
+export function getConfig(): AppConfig {
+  if (!_storeSync) throw new Error('Store not initialized')
+  return _storeSync.store as AppConfig
+}
+
+export function setConfig(partial: Partial<AppConfig>): void {
+  if (!_storeSync) throw new Error('Store not initialized')
+  for (const [key, value] of Object.entries(partial)) {
+    _storeSync.set(key, value)
+  }
+}
+
+export function resetConfig(): void {
+  if (!_storeSync) throw new Error('Store not initialized')
+  _storeSync.reset(...Object.keys(defaults))
+}
+
+export function registerHandlers(): void {
+  ipcMain.handle('get-config', () => getConfig())
+  ipcMain.handle('set-config', (_, partial: Partial<AppConfig>) => setConfig(partial))
+  ipcMain.handle('reset-config', () => resetConfig())
+}

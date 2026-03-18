@@ -1,0 +1,16 @@
+appId: com.aibaji.desktop
+productName: 爱巴基桌面版
+mac:
+  target: dmg
+  category: public.app-category.entertainment
+win:
+  target: nsis
+files:
+  - dist-electron/**
+  - dist/**
+  - resources/**
+extraResources:
+  - from: "../characters"
+    to: "characters"
+    filter:
+      - "**/*.webm"

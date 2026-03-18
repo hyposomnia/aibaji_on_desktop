@@ -1,0 +1,6 @@
+{
+  "server_url": "http://localhost:5287",
+  "token": "",
+  "events": ["PreToolUse", "PostToolUse", "Stop", "Notification", "UserPromptSubmit"],
+  "include_content": false
+}

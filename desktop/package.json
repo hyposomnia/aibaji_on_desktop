@@ -1,0 +1,32 @@
+{
+  "name": "aibaji-desktop",
+  "version": "0.1.0",
+  "description": "爱巴基桌面伴侣",
+  "main": "dist-electron/main/index.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "pack": "electron-builder",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "electron-store": "^10.0.0",
+    "express": "^4.18.2",
+    "openai": "^4.47.0",
+    "@anthropic-ai/sdk": "^0.24.0"
+  },
+  "devDependencies": {
+    "electron": "^30.0.0",
+    "electron-vite": "^2.3.0",
+    "electron-builder": "^24.13.0",
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.0.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "typescript": "^5.4.5",
+    "vite": "^5.2.11",
+    "@vitejs/plugin-react": "^4.3.0"
+  }
+}
