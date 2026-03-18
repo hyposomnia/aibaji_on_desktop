@@ -77,7 +77,6 @@ async function bootstrap(): Promise<void> {
     const currentConfig = getConfig()
     const { name: char, outfit, dataPath: dp } = currentConfig.character
     const emotions = getEmotions(dp, char, outfit)
-
     await processEvent(eventData, emotions, {
       onEmotion: (emotion) => {
         enqueueEmotion(emotion)

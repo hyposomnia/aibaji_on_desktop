@@ -183,7 +183,6 @@ export async function processEvent(
 
   const message = formatEventMessage(eventData)
   const systemPrompt = buildSystemPrompt(persona || '可爱的伴侣', emotions)
-
   try {
     if (apiMode === 'anthropic') {
       await processWithAnthropic(message, systemPrompt, callbacks)
