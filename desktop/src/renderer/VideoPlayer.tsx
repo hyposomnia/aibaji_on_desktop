@@ -25,8 +25,11 @@ export default function VideoPlayer() {
     api.onPlayVideo((path: string) => {
       const video = videoRef.current
       if (!video) return
-      video.src = `file://${path}`
-      video.play().catch(console.error)
+      video.src = encodeURI(`file://${path}`)
+      video.play().catch((e) => {
+        // AbortError 是正常现象（新 src 打断了上一个 play()），忽略
+        if (e.name !== 'AbortError') console.error('video play error:', e)
+      })
     })
 
     // 监听播放音频指令（base64 mp3）

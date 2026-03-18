@@ -40,8 +40,12 @@ export function initVideoQueue(
   idlePool = getIdlePool(dataPath, currentChar, currentOutfit)
   queue = []
   isPlaying = false
-  // 立即开始 idle
-  playIdleVideo()
+  // 等待渲染层加载完成后再开始 idle（避免 IPC 消息在渲染层就绪前丢失）
+  if (win.webContents.isLoading()) {
+    win.webContents.once('did-finish-load', () => playIdleVideo())
+  } else {
+    playIdleVideo()
+  }
 }
 
 /**

@@ -5,7 +5,7 @@ import { getCharacters, getOutfits, getEmotions } from './characterLoader'
 import { createWindow, getMainWindow, registerWindowHandlers } from './window'
 import { startServer, onEvent, stopServer } from './server'
 import { initTray } from './tray'
-import { initVideoQueue, onVideoEnded, enqueueEmotion } from './videoQueue'
+import { initVideoQueue, onVideoEnded, enqueueEmotion, setCharacterOutfit } from './videoQueue'
 import { processEvent } from './llm'
 import { synthesize } from './tts'
 
@@ -36,12 +36,15 @@ async function bootstrap(): Promise<void> {
   // 3. 如果角色未选择，自动选择第一个
   const updatedConfig = getConfig()
   let { name: charName, outfit: charOutfit } = updatedConfig.character
+  console.log('[aibaji] dataPath:', dataPath, 'charName:', charName)
   if (!charName) {
     const chars = getCharacters(dataPath)
+    console.log('[aibaji] available chars:', chars)
     if (chars.length > 0) {
       charName = chars[0]
       const outfits = getOutfits(dataPath, charName)
       charOutfit = outfits.length > 0 ? outfits[0] : ''
+      console.log('[aibaji] auto-selected:', charName, charOutfit)
       setConfig({ character: { ...updatedConfig.character, name: charName, outfit: charOutfit } })
     }
   }
@@ -55,8 +58,14 @@ async function bootstrap(): Promise<void> {
   // 6. 创建系统托盘
   initTray()
 
-  // 7. 初始化视频队列
+  // 7. 初始化视频队列（did-finish-load 内部处理首帧时机）
   initVideoQueue(win, dataPath, charName, charOutfit)
+  // dev 热更新后重新触发 idle
+  if (process.env.ELECTRON_RENDERER_URL) {
+    win.webContents.on('did-finish-load', () => {
+      setCharacterOutfit(charName, charOutfit)
+    })
+  }
 
   // 8. 注册 IPC handlers
   registerStoreHandlers()
