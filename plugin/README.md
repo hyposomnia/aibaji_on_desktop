@@ -4,24 +4,10 @@
 
 ## 安装（一键安装）
 
-**第一步：** 在 `~/.claude/settings.json` 中注册插件源（只需一次）：
-
-```json
-{
-  "extraKnownMarketplaces": {
-    "aibaji": {
-      "source": {
-        "source": "github",
-        "repo": "hyposomnia/aibaji_on_desktop"
-      }
-    }
-  }
-}
-```
-
-**第二步：** 在 Claude Code 中执行：
+在 Claude Code 中执行以下两条命令：
 
 ```
+/plugin marketplace add hyposomnia/aibaji_on_desktop
 /plugins add aibaji@aibaji
 ```
 
