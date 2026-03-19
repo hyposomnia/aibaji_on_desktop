@@ -4,10 +4,11 @@ import { initStore, getConfig, setConfig, registerHandlers as registerStoreHandl
 import { getCharacters, getOutfits, getEmotions } from './characterLoader'
 import { createWindow, getMainWindow, registerWindowHandlers } from './window'
 import { startServer, onEvent, stopServer } from './server'
-import { initTray } from './tray'
+import { initTray, refreshTray } from './tray'
 import { initVideoQueue, onVideoEnded, enqueueEmotion, setCharacterOutfit } from './videoQueue'
 import { processEvent } from './llm'
 import { synthesize } from './tts'
+import { openSettings } from './settings'
 
 // 防止重复初始化
 app.disableHardwareAcceleration() // 透明窗口需要禁用硬件加速（部分平台）
@@ -127,6 +128,24 @@ function registerAdditionalHandlers(dataPath: string): void {
       properties: ['openDirectory'],
     })
     return result.canceled ? null : result.filePaths[0]
+  })
+
+  // 切换角色/服装
+  ipcMain.on('set-character', (_, char: string, outfit: string) => {
+    const config = getConfig()
+    setConfig({ character: { ...config.character, name: char, outfit } })
+    setCharacterOutfit(char, outfit)
+    refreshTray()
+  })
+
+  // 打开设置窗口
+  ipcMain.on('open-settings', () => {
+    openSettings()
+  })
+
+  // 退出
+  ipcMain.on('quit', () => {
+    app.quit()
   })
 }
 

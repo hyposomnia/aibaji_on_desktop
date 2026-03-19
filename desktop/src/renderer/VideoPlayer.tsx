@@ -1,5 +1,10 @@
 import { useEffect, useRef } from 'react'
 
+export interface ContextMenuPos {
+  x: number
+  y: number
+}
+
 // 扩展 Window 类型以支持 electronAPI
 declare global {
   interface Window {
@@ -10,16 +15,42 @@ declare global {
       sendVideoEnded: () => void
       getConfig: () => Promise<unknown>
       setConfig: (partial: unknown) => Promise<void>
+      setIgnoreMouseEvents: (ignore: boolean) => void
+      updateWindowConfig: (updates: { scale?: number; opacity?: number; locked?: boolean }) => void
+      getCharacters: () => Promise<unknown>
+      getOutfits: (char: string) => Promise<unknown>
+      setCharacter: (char: string, outfit: string) => void
+      selectFolder: () => Promise<unknown>
+      openSettings: () => void
+      quit: () => void
     }
   }
 }
 
-export default function VideoPlayer() {
+interface Props {
+  onContextMenu: (pos: ContextMenuPos) => void
+}
+
+export default function VideoPlayer({ onContextMenu }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null)
+  const lockedRef = useRef(false)
 
   useEffect(() => {
     const api = window.electronAPI
     if (!api) return
+
+    // 鼠标进入窗口：停止穿透，允许拖拽和点击
+    const onMouseMove = () => {
+      api.setIgnoreMouseEvents(false)
+    }
+    // 鼠标离开窗口：恢复穿透（非锁定模式）
+    const onMouseLeave = () => {
+      if (!lockedRef.current) {
+        api.setIgnoreMouseEvents(true)
+      }
+    }
+    window.addEventListener('mousemove', onMouseMove)
+    document.addEventListener('mouseleave', onMouseLeave)
 
     // 监听播放视频指令
     api.onPlayVideo((path: string) => {
@@ -40,12 +71,23 @@ export default function VideoPlayer() {
 
     // 监听锁定状态变化
     api.onUpdateLockState((locked: boolean) => {
+      lockedRef.current = locked
       document.body.style.webkitAppRegion = locked ? 'no-drag' : 'drag'
     })
+
+    return () => {
+      window.removeEventListener('mousemove', onMouseMove)
+      document.removeEventListener('mouseleave', onMouseLeave)
+    }
   }, [])
 
   const handleVideoEnded = () => {
     window.electronAPI?.sendVideoEnded()
+  }
+
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault()
+    onContextMenu({ x: e.clientX, y: e.clientY })
   }
 
   return (
@@ -62,6 +104,7 @@ export default function VideoPlayer() {
       <video
         ref={videoRef}
         onEnded={handleVideoEnded}
+        onContextMenu={handleContextMenu}
         style={{
           width: '100%',
           height: '100%',

@@ -2,6 +2,7 @@ import { Tray, Menu, app, nativeImage } from 'electron'
 import * as path from 'path'
 import type { MenuItemConstructorOptions } from 'electron'
 import { getConfig, setConfig } from './store'
+import { openSettings } from './settings'
 import { getCharacters, getOutfits } from './characterLoader'
 import { setCharacterOutfit } from './videoQueue'
 import { setLocked, updateScale, getMainWindow } from './window'
@@ -134,8 +135,8 @@ function buildContextMenu(): Electron.Menu {
       },
     },
     { type: 'separator' },
-    { label: '模型与 TTS 设置…', enabled: false },
-    { label: '其他设置…', enabled: false },
+    { label: '模型与 TTS 设置…', click: () => openSettings() },
+    { label: '其他设置…', click: () => openSettings() },
     { type: 'separator' },
     {
       label: '退出',

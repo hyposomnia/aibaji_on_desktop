@@ -96,6 +96,16 @@ export function updateScale(scale: number): void {
  * 注册窗口相关 IPC handlers
  */
 export function registerWindowHandlers(): void {
+  ipcMain.on('set-ignore-mouse-events', (_, ignore: boolean) => {
+    if (mainWindow) {
+      if (ignore) {
+        mainWindow.setIgnoreMouseEvents(true, { forward: true })
+      } else {
+        mainWindow.setIgnoreMouseEvents(false)
+      }
+    }
+  })
+
   ipcMain.on('update-window-config', (_, updates: { scale?: number; opacity?: number; locked?: boolean }) => {
     if (updates.scale !== undefined) {
       updateScale(updates.scale)

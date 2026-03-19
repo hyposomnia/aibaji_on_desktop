@@ -21,4 +21,19 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // 配置管理
   getConfig: () => ipcRenderer.invoke('get-config'),
   setConfig: (partial: unknown) => ipcRenderer.invoke('set-config', partial),
+  // 鼠标穿透控制
+  setIgnoreMouseEvents: (ignore: boolean) => ipcRenderer.send('set-ignore-mouse-events', ignore),
+  // 窗口配置（触发实际窗口变化）
+  updateWindowConfig: (updates: { scale?: number; opacity?: number; locked?: boolean }) =>
+    ipcRenderer.send('update-window-config', updates),
+  // 角色管理
+  getCharacters: () => ipcRenderer.invoke('get-characters'),
+  getOutfits: (char: string) => ipcRenderer.invoke('get-outfits', char),
+  setCharacter: (char: string, outfit: string) => ipcRenderer.send('set-character', char, outfit),
+  // 文件夹选择
+  selectFolder: () => ipcRenderer.invoke('select-folder'),
+  // 设置窗口
+  openSettings: () => ipcRenderer.send('open-settings'),
+  // 退出
+  quit: () => ipcRenderer.send('quit'),
 })
