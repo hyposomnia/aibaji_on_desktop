@@ -1,4 +1,5 @@
 import { Tray, Menu, app, nativeImage } from 'electron'
+import * as path from 'path'
 import type { MenuItemConstructorOptions } from 'electron'
 import { getConfig, setConfig } from './store'
 import { getCharacters, getOutfits } from './characterLoader'
@@ -8,17 +9,17 @@ import { setLocked, updateScale, getMainWindow } from './window'
 let tray: Tray | null = null
 
 /**
- * 创建一个简单的 16x16 内联托盘图标（base64 PNG）
- * 白色圆圈图标，避免依赖外部文件
+ * 创建托盘图标（从 resources/icon.png 加载并缩放到 16x16）
  */
 function createTrayIcon(): Electron.NativeImage {
-  // 16x16 白色圆形 PNG（base64 编码）
-  // 这是一个简单的内联图标，使用纯 PNG 格式
-  const iconBase64 =
-    'iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAAdgAAAHYBTnsmCAAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAADESURBVDiNpZMxCsJAEEVfsgdIKmMheBEPIHiAnEAQBMFCxDNYeAQPkIV4AkErYqmFmEKwsFCQ1JbZJGYzuwu6sODvZoZ5/AwDGEMIwR9ijEVKqQshxBpwAFhm5wHKGOMVQFwAXwBJkiTneZ5XVXUEoANQAD0i4gBQAhiAXgCB1nWdZVkWEXFeVVXlnHPm3vsgCAIAYGZmOhhjzCmlJElSSqmUUu12u4hoSJIkAID3nkopIYQQQgghxFprrbUe/AHnDjw6IG1lYQAAAABJRU5ErkJggg=='
+  const iconPath = app.isPackaged
+    ? path.join(process.resourcesPath, 'icon.png')
+    : path.join(__dirname, '../../resources/icon.png')
 
   try {
-    return nativeImage.createFromDataURL(`data:image/png;base64,${iconBase64}`)
+    const img = nativeImage.createFromPath(iconPath)
+    if (img.isEmpty()) return nativeImage.createEmpty()
+    return img.resize({ width: 16, height: 16 })
   } catch {
     return nativeImage.createEmpty()
   }

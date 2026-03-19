@@ -3,13 +3,17 @@ productName: 爱巴基桌面版
 mac:
   target: dmg
   category: public.app-category.entertainment
+  icon: resources/icon.png
 win:
   target: nsis
+  icon: resources/icon.png
 files:
   - dist-electron/**
   - dist/**
   - resources/**
 extraResources:
+  - from: "resources/icon.png"
+    to: "icon.png"
   - from: "../characters"
     to: "characters"
     filter:
