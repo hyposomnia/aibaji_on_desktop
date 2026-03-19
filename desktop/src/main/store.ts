@@ -50,6 +50,7 @@ export interface AppConfig {
     baseURL: string
     model: string
     persona: string
+    systemPromptTemplate: string
   }
   tts: {
     enabled: boolean
@@ -89,6 +90,7 @@ const defaults: AppConfig = {
     baseURL: '',
     model: 'gpt-4o-mini',
     persona: '可爱的二次元角色',
+    systemPromptTemplate: '你是{persona}。收到 Claude Code 的工作状态通知后，用角色口吻简短回应主人（不超过50字）。\n必须在回复开头选择一个表情，格式：[表情名]台词内容\n可用表情（只能选其中一个）：{emotions}\n示例：[微笑]主人又在努力工作了呢～',
   },
   tts: {
     enabled: false,

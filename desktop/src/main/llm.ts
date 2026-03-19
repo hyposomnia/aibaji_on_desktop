@@ -5,15 +5,16 @@ export interface LLMCallbacks {
   onText: (text: string) => void
 }
 
+const DEFAULT_SYSTEM_PROMPT_TEMPLATE =
+  '你是{persona}。收到 Claude Code 的工作状态通知后，用角色口吻简短回应主人（不超过50字）。\n必须在回复开头选择一个表情，格式：[表情名]台词内容\n可用表情（只能选其中一个）：{emotions}\n示例：[微笑]主人又在努力工作了呢～'
+
 /**
- * 构建系统提示词
+ * 构建系统提示词（支持自定义模板，占位符：{persona}、{emotions}）
  */
-function buildSystemPrompt(persona: string, emotions: string[]): string {
+function buildSystemPrompt(persona: string, emotions: string[], template?: string): string {
   const emotionList = emotions.join('、')
-  return `你是${persona}。收到 Claude Code 的工作状态通知后，用角色口吻简短回应主人（不超过50字）。
-必须在回复开头选择一个表情，格式：[表情名]台词内容
-可用表情（只能选其中一个）：${emotionList}
-示例：[微笑]主人又在努力工作了呢～`
+  const tpl = (template && template.trim()) ? template : DEFAULT_SYSTEM_PROMPT_TEMPLATE
+  return tpl.replace('{persona}', persona).replace('{emotions}', emotionList)
 }
 
 /**
@@ -215,7 +216,11 @@ export async function processEvent(
   const message = formatEventMessage(eventData)
   // 不让 LLM 选平静——收到事件说明有交互，应有明显表情
   const emotionsForLLM = emotions.filter((e) => !e.startsWith('平静'))
-  const systemPrompt = buildSystemPrompt(effectivePersona, emotionsForLLM.length > 0 ? emotionsForLLM : emotions)
+  const systemPrompt = buildSystemPrompt(
+    effectivePersona,
+    emotionsForLLM.length > 0 ? emotionsForLLM : emotions,
+    config.llm.systemPromptTemplate
+  )
   try {
     if (apiMode === 'anthropic') {
       await processWithAnthropic(message, systemPrompt, callbacks, opts)

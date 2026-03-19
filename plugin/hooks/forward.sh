@@ -7,18 +7,22 @@ set -euo pipefail
 # 读取事件数据（从 stdin）
 EVENT_DATA=$(cat)
 
-# 插件端限速：10 秒内最多发送一次
+# 插件端限速：10 秒内最多发送一次（flock 保证并发安全）
 RATE_LIMIT_FILE="/tmp/aibaji_last_send"
 RATE_LIMIT_INTERVAL=10
-NOW=$(date +%s)
-LAST=0
-if [ -f "$RATE_LIMIT_FILE" ]; then
+SHOULD_SEND=0
+{
+  flock 9
+  NOW=$(date +%s)
   LAST=$(cat "$RATE_LIMIT_FILE" 2>/dev/null || echo 0)
-fi
-if [ $((NOW - LAST)) -lt $RATE_LIMIT_INTERVAL ]; then
+  if [ $((NOW - LAST)) -ge $RATE_LIMIT_INTERVAL ]; then
+    echo "$NOW" > "$RATE_LIMIT_FILE"
+    SHOULD_SEND=1
+  fi
+} 9>"${RATE_LIMIT_FILE}.lock"
+if [ "$SHOULD_SEND" -eq 0 ]; then
   exit 0
 fi
-echo "$NOW" > "$RATE_LIMIT_FILE"
 
 # 配置文件路径
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

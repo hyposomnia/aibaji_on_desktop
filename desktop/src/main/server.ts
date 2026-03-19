@@ -37,13 +37,19 @@ export async function startServer(): Promise<void> {
     const body = req.body as Record<string, unknown>
     const now = Date.now()
     const throttleMs = config.server.throttleMs ?? 5000
+    const sinceLastMs = now - lastProcessedAt
 
-    if (now - lastProcessedAt >= throttleMs) {
+    console.log(`[aibaji] /event received: ${JSON.stringify(body)} | throttle=${throttleMs}ms since_last=${sinceLastMs}ms`)
+
+    if (sinceLastMs >= throttleMs) {
       lastProcessedAt = now
+      console.log(`[aibaji] /event passed throttle, emitting`)
       // 异步 emit，不阻塞响应
       setImmediate(() => {
         emitter.emit('event', body)
       })
+    } else {
+      console.log(`[aibaji] /event throttled (need ${throttleMs - sinceLastMs}ms more)`)
     }
   })
 
