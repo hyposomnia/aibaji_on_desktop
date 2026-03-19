@@ -7,19 +7,31 @@ set -euo pipefail
 # 读取事件数据（从 stdin）
 EVENT_DATA=$(cat)
 
-# 插件端限速：10 秒内最多发送一次（flock 保证并发安全）
-RATE_LIMIT_FILE="/tmp/aibaji_last_send"
-RATE_LIMIT_INTERVAL=10
+# 插件端限速：60 秒滑动窗口内最多发送 5 次（flock 保证并发安全）
+RATE_LOG="/tmp/aibaji_send_log"
+WINDOW_SECONDS=60
+WINDOW_LIMIT=5
 SHOULD_SEND=0
 {
   flock 9
   NOW=$(date +%s)
-  LAST=$(cat "$RATE_LIMIT_FILE" 2>/dev/null || echo 0)
-  if [ $((NOW - LAST)) -ge $RATE_LIMIT_INTERVAL ]; then
-    echo "$NOW" > "$RATE_LIMIT_FILE"
+  CUTOFF=$((NOW - WINDOW_SECONDS))
+  # 过滤窗口内的时间戳并计数
+  if [ -f "$RATE_LOG" ]; then
+    RECENT=$(awk -v cutoff="$CUTOFF" '$1 > cutoff {print}' "$RATE_LOG")
+  else
+    RECENT=""
+  fi
+  COUNT=0
+  if [ -n "$RECENT" ]; then
+    COUNT=$(echo "$RECENT" | wc -l | tr -d ' ')
+  fi
+  if [ "$COUNT" -lt "$WINDOW_LIMIT" ]; then
+    # 写回过滤后的记录 + 新时间戳
+    { [ -n "$RECENT" ] && echo "$RECENT"; echo "$NOW"; } > "$RATE_LOG"
     SHOULD_SEND=1
   fi
-} 9>"${RATE_LIMIT_FILE}.lock"
+} 9>"${RATE_LOG}.lock"
 if [ "$SHOULD_SEND" -eq 0 ]; then
   exit 0
 fi

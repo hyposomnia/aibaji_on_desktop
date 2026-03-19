@@ -1,4 +1,4 @@
-import { app, ipcMain } from 'electron'
+import { app, ipcMain, dialog } from 'electron'
 import * as path from 'path'
 import { initStore, getConfig, setConfig, registerHandlers as registerStoreHandlers } from './store'
 import { getCharacters, getOutfits, getEmotions } from './characterLoader'

@@ -6,8 +6,8 @@ import { getConfig } from './store'
 const emitter = new EventEmitter()
 let httpServer: Server | null = null
 
-// 事件节流：全局记录最近一次处理时间
-let lastProcessedAt = 0
+// 事件节流：滑动窗口，记录最近处理的时间戳列表
+let recentEventTimes: number[] = []
 
 /**
  * 启动 HTTP 服务
@@ -33,23 +33,28 @@ export async function startServer(): Promise<void> {
     // 立即返回 200
     res.json({ status: 'ok' })
 
-    // 异步处理（全局节流，间隔从 config.server.throttleMs 读取）
+    // 异步处理（滑动窗口限速）
     const body = req.body as Record<string, unknown>
     const now = Date.now()
-    const throttleMs = config.server.throttleMs ?? 5000
-    const sinceLastMs = now - lastProcessedAt
+    const windowMs = config.server.windowMs ?? 60000
+    const windowLimit = config.server.windowLimit ?? 5
 
-    console.log(`[aibaji] /event received: ${JSON.stringify(body)} | throttle=${throttleMs}ms since_last=${sinceLastMs}ms`)
+    // 清理窗口外的旧记录
+    recentEventTimes = recentEventTimes.filter(t => now - t < windowMs)
+    const count = recentEventTimes.length
 
-    if (sinceLastMs >= throttleMs) {
-      lastProcessedAt = now
-      console.log(`[aibaji] /event passed throttle, emitting`)
-      // 异步 emit，不阻塞响应
+    console.log(`[aibaji] /event received: ${JSON.stringify(body)} | window=${windowMs}ms count=${count}/${windowLimit}`)
+
+    if (count < windowLimit) {
+      recentEventTimes.push(now)
+      console.log(`[aibaji] /event passed (${count + 1}/${windowLimit}), emitting`)
       setImmediate(() => {
         emitter.emit('event', body)
       })
     } else {
-      console.log(`[aibaji] /event throttled (need ${throttleMs - sinceLastMs}ms more)`)
+      const oldest = recentEventTimes[0]
+      const resetIn = windowMs - (now - oldest)
+      console.log(`[aibaji] /event throttled (${count}/${windowLimit}, resets in ${resetIn}ms)`)
     }
   })
 

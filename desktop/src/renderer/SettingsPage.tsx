@@ -61,7 +61,8 @@ export default function SettingsPage() {
   const [outfitsMap, setOutfitsMap] = useState<Record<string, string[]>>({})
 
   // 系统设置 tab 状态
-  const [throttleMs, setThrottleMs] = useState(5000)
+  const [windowMs, setWindowMs] = useState(60000)
+  const [windowLimit, setWindowLimit] = useState(5)
   const [systemPromptTemplate, setSystemPromptTemplate] = useState(DEFAULT_TEMPLATE)
 
   const [saved, setSaved] = useState(false)
@@ -76,7 +77,8 @@ export default function SettingsPage() {
       setDataPath((char.dataPath as string) || '')
 
       const srv = (c.server as Record<string, unknown>) || {}
-      setThrottleMs(typeof srv.throttleMs === 'number' ? srv.throttleMs : 5000)
+      setWindowMs(typeof srv.windowMs === 'number' ? srv.windowMs : 60000)
+      setWindowLimit(typeof srv.windowLimit === 'number' ? srv.windowLimit : 5)
 
       const llm = (c.llm as Record<string, unknown>) || {}
       setSystemPromptTemplate((llm.systemPromptTemplate as string) || DEFAULT_TEMPLATE)
@@ -105,7 +107,7 @@ export default function SettingsPage() {
     const srv = (cfg.server as Record<string, unknown>) || {}
     const llm = (cfg.llm as Record<string, unknown>) || {}
     await window.electronAPI.setConfig({
-      server: { ...srv, throttleMs },
+      server: { ...srv, windowMs, windowLimit },
       llm: { ...llm, systemPromptTemplate },
       llmProfiles,
       ttsProfiles,
@@ -370,23 +372,37 @@ export default function SettingsPage() {
           </Section>
 
           <Section title="事件节流">
-            <Field label="请求间隔">
+            <Field label="时间窗口">
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <input
                   type="number"
-                  min={1000}
-                  max={60000}
-                  step={500}
-                  value={throttleMs}
-                  onChange={(e) => setThrottleMs(Number(e.target.value))}
+                  min={10000}
+                  max={300000}
+                  step={5000}
+                  value={windowMs}
+                  onChange={(e) => setWindowMs(Number(e.target.value))}
                   style={{ ...styles.input, width: 90 }}
                 />
                 <span style={{ fontSize: 13, color: '#888' }}>毫秒</span>
               </div>
             </Field>
+            <Field label="最大条数">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <input
+                  type="number"
+                  min={1}
+                  max={20}
+                  step={1}
+                  value={windowLimit}
+                  onChange={(e) => setWindowLimit(Number(e.target.value))}
+                  style={{ ...styles.input, width: 60 }}
+                />
+                <span style={{ fontSize: 13, color: '#888' }}>条</span>
+              </div>
+            </Field>
             <p style={styles.hint}>
-              客户端收到事件后，此间隔内的重复请求将被忽略（默认 5000ms）。<br />
-              插件端固定 10 秒限速一次。
+              滑动窗口限速：时间窗口内最多处理指定条数（默认 60s / 5条）。<br />
+              插件端与客户端同步使用相同策略。
             </p>
           </Section>
 
