@@ -3,8 +3,6 @@ import * as path from 'path'
 import { getConfig, setConfig } from './store'
 
 let mainWindow: BrowserWindow | null = null
-// 延迟启用位置保存，避免 setAlwaysOnTop 等初始化操作触发 'moved' 误存坐标
-let positionSaveReady = false
 
 /**
  * 创建透明悬浮窗口
@@ -34,12 +32,8 @@ export function createWindow(): BrowserWindow {
     },
   })
 
-  // 始终置顶（可能触发 'moved'，需在 positionSaveReady=true 之前调用）
+  // 始终置顶
   mainWindow.setAlwaysOnTop(true, 'screen-saver')
-
-  // 延迟 800ms 后才允许保存位置，过滤初始化阶段的系统级移动
-  positionSaveReady = false
-  setTimeout(() => { positionSaveReady = true }, 800)
 
   // dev 模式：Cmd+Shift+I 打开 DevTools
   if (process.env.ELECTRON_RENDERER_URL) {
@@ -48,9 +42,9 @@ export function createWindow(): BrowserWindow {
     })
   }
 
-  // 拖动结束：保存位置（忽略初始化阶段的系统级移动）
-  mainWindow.on('moved', () => {
-    if (!mainWindow || !positionSaveReady) return
+  // 关闭时保存位置，避免 setAlwaysOnTop 等初始化事件导致的坐标漂移
+  mainWindow.on('close', () => {
+    if (!mainWindow) return
     const { x, y } = mainWindow.getBounds()
     setConfig({ window: { ...getConfig().window, x, y } })
   })
