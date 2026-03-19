@@ -42,26 +42,10 @@ export function createWindow(): BrowserWindow {
     })
   }
 
-  // 拖动结束：吸附屏幕边缘 + 保存位置
-  const SNAP_THRESHOLD = 20
+  // 拖动结束：保存位置
   mainWindow.on('moved', () => {
     if (!mainWindow) return
-    const { x: screenX, y: screenY, width: screenW, height: screenH } = electronScreen.getPrimaryDisplay().workArea
-    const bounds = mainWindow.getBounds()
-    let { x, y } = bounds
-
-    // 左边吸附
-    if (x - screenX <= SNAP_THRESHOLD) x = screenX
-    // 右边吸附
-    else if (screenX + screenW - (x + bounds.width) <= SNAP_THRESHOLD) x = screenX + screenW - bounds.width
-    // 上边吸附
-    if (y - screenY <= SNAP_THRESHOLD) y = screenY
-    // 下边吸附
-    else if (screenY + screenH - (y + bounds.height) <= SNAP_THRESHOLD) y = screenY + screenH - bounds.height
-
-    if (x !== bounds.x || y !== bounds.y) {
-      mainWindow.setPosition(x, y)
-    }
+    const { x, y } = mainWindow.getBounds()
     setConfig({ window: { ...getConfig().window, x, y } })
   })
 
