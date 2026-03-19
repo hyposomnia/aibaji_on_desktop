@@ -2,7 +2,7 @@ import * as https from 'https'
 import * as fs from 'fs'
 import * as os from 'os'
 import * as path from 'path'
-import { spawn } from 'child_process'
+import { spawn, type ChildProcess } from 'child_process'
 import type { BrowserWindow } from 'electron'
 import { getConfig } from './store'
 
@@ -12,13 +12,68 @@ type HttpResponse = {
   body: Buffer
 }
 
+// ── 音频播放队列 ──────────────────────────────────────────
+let audioQueue: string[] = []          // 待播放的临时 mp3 文件路径
+let currentAfplay: ChildProcess | null = null
+
+function playNextInQueue(): void {
+  if (currentAfplay || audioQueue.length === 0) return
+  const file = audioQueue.shift()!
+  console.log(`[aibaji] TTS queue play: ${file} (remaining=${audioQueue.length})`)
+  const proc = spawn('afplay', [file])
+  currentAfplay = proc
+  proc.on('close', () => {
+    currentAfplay = null
+    fs.unlink(file, () => {})
+    playNextInQueue()
+  })
+  proc.on('error', (e) => {
+    console.error('[aibaji] TTS afplay error:', e)
+    currentAfplay = null
+    fs.unlink(file, () => {})
+    playNextInQueue()
+  })
+}
+
+function enqueueAudioFile(filePath: string): void {
+  audioQueue.push(filePath)
+  playNextInQueue()
+}
+
+export function clearAudioQueue(): void {
+  audioQueue.forEach((f) => fs.unlink(f, () => {}))
+  audioQueue = []
+  if (currentAfplay) {
+    currentAfplay.kill()
+    currentAfplay = null
+  }
+}
+// ─────────────────────────────────────────────────────────
+
+// ── 文本分段 ──────────────────────────────────────────────
+const MIN_SEGMENT_CHARS = 5
+
+function splitText(text: string): string[] {
+  // 按中英文逗号、句号切分，保留分隔符在段尾
+  const parts = text.split(/(?<=[，。,.])/u).filter((s) => s.trim().length > 0)
+
+  const segments: string[] = []
+  for (const part of parts) {
+    const charCount = part.replace(/[，。,.]/g, '').replace(/\s/g, '').length
+    if (segments.length > 0 && charCount < MIN_SEGMENT_CHARS) {
+      segments[segments.length - 1] += part
+    } else {
+      segments.push(part)
+    }
+  }
+  return segments.filter((s) => s.trim().length > 0)
+}
+// ─────────────────────────────────────────────────────────
+
 function isLikelyHex(input: string): boolean {
   return input.length > 0 && input.length % 2 === 0 && /^[0-9a-fA-F]+$/.test(input)
 }
 
-/**
- * 发送 HTTPS POST 请求，返回状态码、响应头和响应体
- */
 function httpsPost(url: string, body: string, headers: Record<string, string>): Promise<HttpResponse> {
   return new Promise((resolve, reject) => {
     const urlObj = new URL(url)
@@ -53,20 +108,62 @@ function httpsPost(url: string, body: string, headers: Record<string, string>): 
   })
 }
 
-/**
- * 调用 MiniMax TTS API，将文本转换为语音并发送给渲染进程播放
- *
- * MiniMax T2A V2 API 文档参考：
- * POST https://api.minimax.chat/v1/t2a_v2
- *
- * @param text 要转换的文本
- * @param win Electron 渲染窗口
- */
+async function synthesizeSegment(
+  segment: string,
+  opts: { apiKey: string; model: string; voiceId: string }
+): Promise<Buffer | null> {
+  const requestBody = JSON.stringify({
+    model: opts.model || 'speech-01',
+    text: segment,
+    stream: false,
+    voice_setting: {
+      voice_id: opts.voiceId || 'female-tianmei',
+      speed: 1.0,
+      vol: 1.0,
+      pitch: 0,
+    },
+    audio_setting: {
+      audio_sample_rate: 32000,
+      bitrate: 128000,
+      format: 'mp3',
+    },
+  })
+
+  const response = await httpsPost(
+    'https://api.minimax.chat/v1/t2a_v2',
+    requestBody,
+    { Authorization: `Bearer ${opts.apiKey}` }
+  )
+
+  if (response.statusCode < 200 || response.statusCode >= 300) {
+    console.error(`[aibaji] TTS segment failed: status=${response.statusCode}`)
+    return null
+  }
+
+  try {
+    const json = JSON.parse(response.body.toString('utf-8')) as Record<string, unknown>
+    const data = json?.data as Record<string, unknown> | undefined
+    const baseResp = json?.base_resp as Record<string, unknown> | undefined
+    const apiStatus = baseResp?.status_code as number | undefined
+    if (apiStatus !== undefined && apiStatus !== 0) {
+      console.error(`[aibaji] TTS API error: ${apiStatus}`)
+      return null
+    }
+    const audioRaw = data?.audio as string | undefined
+    if (!audioRaw) return null
+    return isLikelyHex(audioRaw)
+      ? Buffer.from(audioRaw, 'hex')
+      : Buffer.from(audioRaw, 'base64')
+  } catch {
+    return response.body
+  }
+}
+
 export async function synthesize(text: string, win: BrowserWindow | null, charName?: string): Promise<void> {
   const config = getConfig()
   const cleanedText = text.trim()
 
-  // 优先使用 ttsProfiles（新配置）；按角色查找，没有则用第一个
+  // 解析 TTS 配置
   let apiKey = ''
   let model = ''
   let voiceId = ''
@@ -84,113 +181,41 @@ export async function synthesize(text: string, win: BrowserWindow | null, charNa
     model = profile.model?.trim() ?? ''
     voiceId = profile.voiceId?.trim() ?? ''
 
-    // 若新配置存在但未填 key，退回旧配置，避免“有 profile 但无法发声”
     if (!apiKey && config.tts.enabled && config.tts.apiKey) {
       apiKey = config.tts.apiKey
       model = config.tts.model
       voiceId = config.tts.voiceId
     }
   } else {
-    // fallback 到旧 config.tts
     if (!config.tts.enabled || !config.tts.apiKey) return
     apiKey = config.tts.apiKey
     model = config.tts.model
     voiceId = config.tts.voiceId
   }
 
-  // TTS 未配置 API Key，静默跳过
   if (!apiKey || !cleanedText) {
     console.log('[aibaji] TTS skipped: no apiKey or empty text')
     return
   }
-  console.log(`[aibaji] TTS synthesize: model=${model}, voiceId=${voiceId}, text="${cleanedText.slice(0, 20)}..."`)
 
+  // 分段
+  const segments = splitText(cleanedText)
+  console.log(`[aibaji] TTS segments(${segments.length}): ${segments.map((s) => `"${s.slice(0, 10)}"`).join(', ')}`)
 
+  const opts = { apiKey, model, voiceId }
+
+  // 并发合成所有分段，按顺序写文件+入队
   try {
-    const requestBody = JSON.stringify({
-      model: model || 'speech-01',
-      text: cleanedText,
-      stream: false,
-      voice_setting: {
-        voice_id: voiceId || 'female-tianmei',
-        speed: 1.0,
-        vol: 1.0,
-        pitch: 0,
-      },
-      audio_setting: {
-        audio_sample_rate: 32000,
-        bitrate: 128000,
-        format: 'mp3',
-      },
-    })
+    const buffers = await Promise.all(segments.map((seg) => synthesizeSegment(seg, opts)))
 
-    const response = await httpsPost(
-      'https://api.minimax.chat/v1/t2a_v2',
-      requestBody,
-      {
-        Authorization: `Bearer ${apiKey}`,
-      }
-    )
-
-    console.log(`[aibaji] TTS http: status=${response.statusCode}, content-type=${response.headers['content-type'] ?? 'unknown'}`)
-
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      const errPreview = response.body.toString('utf-8').slice(0, 300)
-      console.error(`[aibaji] TTS request failed: status=${response.statusCode}, body=${errPreview}`)
-      return
-    }
-
-    // 解析响应
-    const responseText = response.body.toString('utf-8')
-    console.log(`[aibaji] TTS response (first 200): ${responseText.slice(0, 200)}`)
-    let audioBase64: string | null = null
-
-    try {
-      const json = JSON.parse(responseText) as Record<string, unknown>
-      const data = json?.data as Record<string, unknown> | undefined
-      const baseResp = json?.base_resp as Record<string, unknown> | undefined
-      const apiStatus = baseResp?.status_code as number | undefined
-      const apiMsg = baseResp?.status_msg as string | undefined
-      const audioRaw = data?.audio as string | undefined
-      console.log(`[aibaji] TTS json keys: ${Object.keys(json)}, data keys: ${data ? Object.keys(data) : 'none'}, audio length: ${audioRaw?.length ?? 0}`)
-
-      if (apiStatus !== undefined && apiStatus !== 0) {
-        console.error(`[aibaji] TTS API error: status_code=${apiStatus}, status_msg=${apiMsg ?? 'unknown'}`)
-        return
-      }
-
-      if (audioRaw) {
-        if (isLikelyHex(audioRaw)) {
-          audioBase64 = Buffer.from(audioRaw, 'hex').toString('base64')
-        } else {
-          // 兼容部分接口直接返回 base64
-          audioBase64 = audioRaw
-        }
-        console.log(`[aibaji] TTS base64 length: ${audioBase64.length}`)
-      }
-    } catch {
-      console.log(`[aibaji] TTS response is not JSON, treating as binary`)
-      audioBase64 = response.body.toString('base64')
-    }
-
-    if (audioBase64) {
-      const audioBuffer = Buffer.from(audioBase64, 'base64')
-      const tmpFile = path.join(os.tmpdir(), `aibaji-tts-${Date.now()}.mp3`)
-      fs.writeFileSync(tmpFile, audioBuffer)
-      console.log(`[aibaji] TTS playing via afplay: ${tmpFile}`)
-      const proc = spawn('afplay', [tmpFile])
-      proc.on('close', () => {
-        fs.unlink(tmpFile, () => {})
-      })
-      proc.on('error', (e) => {
-        console.error('[aibaji] TTS afplay error:', e)
-        fs.unlink(tmpFile, () => {})
-      })
-    } else {
-      console.log(`[aibaji] TTS no audio to send`)
+    for (let i = 0; i < buffers.length; i++) {
+      const buf = buffers[i]
+      if (!buf) continue
+      const tmpFile = path.join(os.tmpdir(), `aibaji-tts-${Date.now()}-${i}.mp3`)
+      fs.writeFileSync(tmpFile, buf)
+      enqueueAudioFile(tmpFile)
     }
   } catch (err) {
-    // 静默跳过 TTS 错误，不影响主流程
     console.error('[aibaji] TTS error:', err)
   }
 }
