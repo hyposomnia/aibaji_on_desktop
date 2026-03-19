@@ -17,6 +17,8 @@ declare global {
       setCharacter: (char: string, outfit: string) => void
       selectFolder: () => Promise<unknown>
       openSettings: () => void
+      onNeedSetup: (callback: () => void) => void
+      sendSetupComplete: () => void
       quit: () => void
     }
   }

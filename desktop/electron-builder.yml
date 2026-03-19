@@ -15,7 +15,3 @@ files:
 extraResources:
   - from: "resources/icon.png"
     to: "icon.png"
-  - from: "../characters"
-    to: "characters"
-    filter:
-      - "**/*.webm"

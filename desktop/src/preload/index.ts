@@ -34,6 +34,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   selectFolder: () => ipcRenderer.invoke('select-folder'),
   // 设置窗口
   openSettings: () => ipcRenderer.send('open-settings'),
+  // 首次启动 setup
+  onNeedSetup: (callback: () => void) => {
+    ipcRenderer.once('need-setup', callback)
+  },
+  sendSetupComplete: () => ipcRenderer.send('setup-complete'),
   // 退出
   quit: () => ipcRenderer.send('quit'),
 })
