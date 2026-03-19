@@ -48,6 +48,7 @@ function newTTSProfile(): TTSProfile {
 
 export default function SettingsPage() {
   const [dataPath, setDataPath] = useState('')
+  const [throttleMs, setThrottleMs] = useState(5000)
   const [llmProfiles, setLlmProfiles] = useState<LLMProfile[]>([])
   const [ttsProfiles, setTtsProfiles] = useState<TTSProfile[]>([])
   const [characterProfiles, setCharacterProfiles] = useState<Record<string, CharacterProfile>>({})
@@ -62,6 +63,8 @@ export default function SettingsPage() {
       const c = cfg as Record<string, unknown>
       const char = (c.character as Record<string, unknown>) || {}
       setDataPath((char.dataPath as string) || '')
+      const srv = (c.server as Record<string, unknown>) || {}
+      setThrottleMs(typeof srv.throttleMs === 'number' ? srv.throttleMs : 5000)
 
       if (Array.isArray(c.llmProfiles)) setLlmProfiles(c.llmProfiles as LLMProfile[])
       if (Array.isArray(c.ttsProfiles)) setTtsProfiles(c.ttsProfiles as TTSProfile[])
@@ -83,7 +86,14 @@ export default function SettingsPage() {
   }, [])
 
   const handleSave = async () => {
-    await window.electronAPI.setConfig({ llmProfiles, ttsProfiles, characterProfiles })
+    const cfg = (await window.electronAPI.getConfig()) as Record<string, unknown>
+    const srv = (cfg.server as Record<string, unknown>) || {}
+    await window.electronAPI.setConfig({
+      server: { ...srv, throttleMs },
+      llmProfiles,
+      ttsProfiles,
+      characterProfiles,
+    })
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
   }
@@ -134,6 +144,28 @@ export default function SettingsPage() {
           文件夹格式：<code style={styles.code}>{`{角色名}/{服装名}/{表情名}[数字].webm`}</code>
           <br />
           例：<code style={styles.code}>流萤/制服/微笑.webm</code>
+        </p>
+      </Section>
+
+      {/* 区块一点五：事件节流 */}
+      <Section title="事件节流">
+        <Field label="请求间隔">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <input
+              type="number"
+              min={1000}
+              max={60000}
+              step={500}
+              value={throttleMs}
+              onChange={(e) => setThrottleMs(Number(e.target.value))}
+              style={{ ...styles.input, width: 90 }}
+            />
+            <span style={{ fontSize: 13, color: '#888' }}>毫秒</span>
+          </div>
+        </Field>
+        <p style={styles.hint}>
+          客户端收到事件后，此间隔内的重复请求将被忽略（默认 5000ms）。<br />
+          插件端固定 10 秒限速一次。
         </p>
       </Section>
 

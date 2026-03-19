@@ -6,9 +6,8 @@ import { getConfig } from './store'
 const emitter = new EventEmitter()
 let httpServer: Server | null = null
 
-// 事件节流：记录每种事件类型的最近处理时间
-const lastProcessed = new Map<string, number>()
-const THROTTLE_MS = 3000 // 3 秒内同类事件只处理一次
+// 事件节流：全局记录最近一次处理时间
+let lastProcessedAt = 0
 
 /**
  * 启动 HTTP 服务
@@ -34,14 +33,13 @@ export async function startServer(): Promise<void> {
     // 立即返回 200
     res.json({ status: 'ok' })
 
-    // 异步处理（节流）
+    // 异步处理（全局节流，间隔从 config.server.throttleMs 读取）
     const body = req.body as Record<string, unknown>
-    const eventType = (body.hook_event_name as string) || 'unknown'
     const now = Date.now()
-    const last = lastProcessed.get(eventType) || 0
+    const throttleMs = config.server.throttleMs ?? 5000
 
-    if (now - last >= THROTTLE_MS) {
-      lastProcessed.set(eventType, now)
+    if (now - lastProcessedAt >= throttleMs) {
+      lastProcessedAt = now
       // 异步 emit，不阻塞响应
       setImmediate(() => {
         emitter.emit('event', body)

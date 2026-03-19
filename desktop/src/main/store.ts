@@ -28,6 +28,7 @@ export interface AppConfig {
   server: {
     port: number
     token: string
+    throttleMs: number
   }
   character: {
     name: string
@@ -66,6 +67,7 @@ const defaults: AppConfig = {
   server: {
     port: 5287,
     token: '',
+    throttleMs: 5000,
   },
   character: {
     name: '',
