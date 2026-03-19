@@ -31,12 +31,17 @@ async function bootstrap(): Promise<void> {
   registerWindowHandlers()
   registerAdditionalHandlers()
 
-  // 6. 等待窗口加载完成
+  // 6. 提前注册 renderer-ready Promise，避免错过事件
+  const rendererReady = new Promise<void>((resolve) => {
+    ipcMain.once('renderer-ready', () => resolve())
+  })
+
+  // 7. 等待窗口加载完成
   await new Promise<void>((resolve) => {
     win.webContents.once('did-finish-load', resolve)
   })
 
-  // 7. 若 dataPath 为空，通知 renderer 显示 setup 弹窗，等待用户完成
+  // 8. 若 dataPath 为空，通知 renderer 显示 setup 弹窗，等待用户完成
   let config = getConfig()
   if (!config.character.dataPath) {
     win.webContents.send('need-setup')
@@ -52,7 +57,7 @@ async function bootstrap(): Promise<void> {
     return
   }
 
-  // 8. 如果角色未选择，自动选择第一个
+  // 9. 如果角色未选择，自动选择第一个
   let { name: charName, outfit: charOutfit } = config.character
   console.log('[aibaji] dataPath:', dataPath, 'charName:', charName)
   if (!charName) {
@@ -67,7 +72,8 @@ async function bootstrap(): Promise<void> {
     }
   }
 
-  // 9. 初始化视频队列（did-finish-load 内部处理首帧时机）
+  // 9. 等待 renderer IPC 监听注册完毕，再初始化视频队列
+  await rendererReady
   initVideoQueue(win, dataPath, charName, charOutfit)
   // dev 热更新后重新触发 idle
   if (process.env.ELECTRON_RENDERER_URL) {
@@ -76,10 +82,10 @@ async function bootstrap(): Promise<void> {
     })
   }
 
-  // 10. 刷新托盘（显示正确角色列表）
+  // 11. 刷新托盘（显示正确角色列表）
   refreshTray()
 
-  // 11. 监听 HTTP 事件 → LLM → 视频队列
+  // 12. 监听 HTTP 事件 → LLM → 视频队列
   onEvent(async (eventData) => {
     const currentConfig = getConfig()
     const { name: char, outfit, dataPath: dp } = currentConfig.character

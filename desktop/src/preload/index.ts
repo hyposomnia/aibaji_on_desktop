@@ -41,4 +41,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   sendSetupComplete: () => ipcRenderer.send('setup-complete'),
   // 退出
   quit: () => ipcRenderer.send('quit'),
+  // 通知 main 进程渲染层已就绪（IPC 监听已注册）
+  notifyReady: () => ipcRenderer.send('renderer-ready'),
 })

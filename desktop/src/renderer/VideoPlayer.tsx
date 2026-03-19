@@ -67,6 +67,9 @@ export default function VideoPlayer() {
       lockedRef.current = locked
       document.body.style.webkitAppRegion = locked ? 'no-drag' : 'drag'
     })
+
+    // 所有 IPC 监听已注册，通知 main 进程可以开始播放
+    api.notifyReady()
   }, [])
 
   const handleVideoEnded = () => {
