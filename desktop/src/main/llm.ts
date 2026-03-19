@@ -1,4 +1,4 @@
-import { getConfig } from './store'
+import { getConfig, LLMProfile } from './store'
 
 export interface LLMCallbacks {
   onEmotion: (emotion: string) => void
@@ -86,16 +86,35 @@ class StreamParser {
 }
 
 /**
+ * 解析角色应使用的 LLM Profile 和 persona
+ */
+export function resolveCharacterLLM(charName: string): { profile: LLMProfile | null; persona: string } {
+  const config = getConfig()
+  const charProfile = config.characterProfiles?.[charName]
+
+  let profile: LLMProfile | null = null
+  if (charProfile?.llmProfileId && config.llmProfiles?.length > 0) {
+    profile = config.llmProfiles.find((p) => p.id === charProfile.llmProfileId) || null
+  }
+  if (!profile && config.llmProfiles?.length > 0) {
+    profile = config.llmProfiles[0]
+  }
+
+  const persona = charProfile?.persona || config.llm.persona || '可爱的二次元角色'
+  return { profile, persona }
+}
+
+/**
  * 使用 OpenAI 兼容 API 处理事件
  */
 async function processWithOpenAI(
   message: string,
   systemPrompt: string,
-  callbacks: LLMCallbacks
+  callbacks: LLMCallbacks,
+  opts: { apiKey: string; baseURL: string; model: string }
 ): Promise<void> {
   const { default: OpenAI } = await import('openai')
-  const config = getConfig()
-  const { apiKey, baseURL, model } = config.llm
+  const { apiKey, baseURL, model } = opts
 
   const client = new OpenAI({
     apiKey,
@@ -105,7 +124,7 @@ async function processWithOpenAI(
   const parser = new StreamParser(callbacks)
 
   const stream = await client.chat.completions.create({
-    model,
+    model: opts.model,
     messages: [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: message },
@@ -130,11 +149,11 @@ async function processWithOpenAI(
 async function processWithAnthropic(
   message: string,
   systemPrompt: string,
-  callbacks: LLMCallbacks
+  callbacks: LLMCallbacks,
+  opts: { apiKey: string; baseURL: string; model: string }
 ): Promise<void> {
   const Anthropic = await import('@anthropic-ai/sdk')
-  const config = getConfig()
-  const { apiKey, baseURL, model } = config.llm
+  const { apiKey, baseURL, model } = opts
 
   const client = new Anthropic.default({
     apiKey,
@@ -144,7 +163,7 @@ async function processWithAnthropic(
   const parser = new StreamParser(callbacks)
 
   const stream = await client.messages.stream({
-    model,
+    model: opts.model,
     system: systemPrompt,
     messages: [{ role: 'user', content: message }],
     max_tokens: 150,
@@ -169,10 +188,18 @@ async function processWithAnthropic(
 export async function processEvent(
   eventData: Record<string, unknown>,
   emotions: string[],
-  callbacks: LLMCallbacks
+  callbacks: LLMCallbacks,
+  llmProfile?: LLMProfile | null,
+  persona?: string
 ): Promise<void> {
   const config = getConfig()
-  const { apiMode, apiKey, persona } = config.llm
+
+  // 决定使用哪套配置：优先 llmProfile，fallback 到 config.llm
+  const apiMode = llmProfile?.apiMode ?? config.llm.apiMode
+  const apiKey = llmProfile?.apiKey ?? config.llm.apiKey
+  const baseURL = llmProfile?.baseURL ?? config.llm.baseURL
+  const model = llmProfile?.model ?? config.llm.model
+  const effectivePersona = persona ?? config.llm.persona ?? '可爱的伴侣'
 
   // 降级：未配置 API Key
   if (!apiKey || emotions.length === 0) {
@@ -181,13 +208,14 @@ export async function processEvent(
     return
   }
 
+  const opts = { apiKey, baseURL, model }
   const message = formatEventMessage(eventData)
-  const systemPrompt = buildSystemPrompt(persona || '可爱的伴侣', emotions)
+  const systemPrompt = buildSystemPrompt(effectivePersona, emotions)
   try {
     if (apiMode === 'anthropic') {
-      await processWithAnthropic(message, systemPrompt, callbacks)
+      await processWithAnthropic(message, systemPrompt, callbacks, opts)
     } else {
-      await processWithOpenAI(message, systemPrompt, callbacks)
+      await processWithOpenAI(message, systemPrompt, callbacks, opts)
     }
   } catch (err) {
     console.error('[aibaji] LLM error:', err)

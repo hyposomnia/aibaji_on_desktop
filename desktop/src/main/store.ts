@@ -1,5 +1,29 @@
 import { ipcMain } from 'electron'
 
+export interface LLMProfile {
+  id: string
+  name: string
+  apiMode: 'openai' | 'anthropic'
+  apiKey: string
+  baseURL: string
+  model: string
+}
+
+export interface TTSProfile {
+  id: string
+  name: string
+  provider: 'minimax'
+  apiKey: string
+  model: string
+  voiceId: string
+}
+
+export interface CharacterProfile {
+  persona: string
+  llmProfileId: string
+  ttsProfileId: string
+}
+
 export interface AppConfig {
   server: {
     port: number
@@ -33,6 +57,9 @@ export interface AppConfig {
     model: string
     voiceId: string
   }
+  llmProfiles: LLMProfile[]
+  ttsProfiles: TTSProfile[]
+  characterProfiles: Record<string, CharacterProfile>
 }
 
 const defaults: AppConfig = {
@@ -68,6 +95,9 @@ const defaults: AppConfig = {
     model: 'speech-01',
     voiceId: '',
   },
+  llmProfiles: [],
+  ttsProfiles: [],
+  characterProfiles: {},
 }
 
 // electron-store v10 是 ESM only，需要动态导入

@@ -1,62 +1,89 @@
 import { useState, useEffect } from 'react'
 
-interface LLMConfig {
+interface LLMProfile {
+  id: string
+  name: string
   apiMode: 'openai' | 'anthropic'
   apiKey: string
   baseURL: string
   model: string
-  persona: string
 }
 
-interface TTSConfig {
-  enabled: boolean
-  provider: string
+interface TTSProfile {
+  id: string
+  name: string
+  provider: 'minimax'
   apiKey: string
   model: string
   voiceId: string
 }
 
-interface CharacterConfig {
-  dataPath: string
-  name: string
-  outfit: string
+interface CharacterProfile {
+  persona: string
+  llmProfileId: string
+  ttsProfileId: string
 }
 
-export default function SettingsPage() {
-  const [llm, setLlm] = useState<LLMConfig>({
+function newLLMProfile(): LLMProfile {
+  return {
+    id: Date.now().toString(),
+    name: '新模型',
     apiMode: 'openai',
     apiKey: '',
     baseURL: '',
     model: 'gpt-4o-mini',
-    persona: '可爱的二次元角色',
-  })
-  const [tts, setTts] = useState<TTSConfig>({
-    enabled: false,
+  }
+}
+
+function newTTSProfile(): TTSProfile {
+  return {
+    id: Date.now().toString(),
+    name: '新 TTS',
     provider: 'minimax',
     apiKey: '',
     model: 'speech-01',
     voiceId: '',
-  })
-  const [character, setCharacter] = useState<CharacterConfig>({
-    dataPath: '',
-    name: '',
-    outfit: '',
-  })
+  }
+}
+
+export default function SettingsPage() {
+  const [dataPath, setDataPath] = useState('')
+  const [llmProfiles, setLlmProfiles] = useState<LLMProfile[]>([])
+  const [ttsProfiles, setTtsProfiles] = useState<TTSProfile[]>([])
+  const [characterProfiles, setCharacterProfiles] = useState<Record<string, CharacterProfile>>({})
+  const [characters, setCharacters] = useState<string[]>([])
+  const [outfitsMap, setOutfitsMap] = useState<Record<string, string[]>>({})
   const [saved, setSaved] = useState(false)
 
   useEffect(() => {
-    // 设置窗口不需要拖动区域
     document.body.style.webkitAppRegion = 'no-drag'
-    window.electronAPI.getConfig().then((cfg) => {
+
+    window.electronAPI.getConfig().then(async (cfg) => {
       const c = cfg as Record<string, unknown>
-      if (c.llm) setLlm(c.llm as LLMConfig)
-      if (c.tts) setTts(c.tts as TTSConfig)
-      if (c.character) setCharacter(c.character as CharacterConfig)
+      const char = (c.character as Record<string, unknown>) || {}
+      setDataPath((char.dataPath as string) || '')
+
+      if (Array.isArray(c.llmProfiles)) setLlmProfiles(c.llmProfiles as LLMProfile[])
+      if (Array.isArray(c.ttsProfiles)) setTtsProfiles(c.ttsProfiles as TTSProfile[])
+      if (c.characterProfiles && typeof c.characterProfiles === 'object') {
+        setCharacterProfiles(c.characterProfiles as Record<string, CharacterProfile>)
+      }
+    })
+
+    window.electronAPI.getCharacters().then(async (chars) => {
+      const charList = chars as string[]
+      setCharacters(charList)
+      const map: Record<string, string[]> = {}
+      for (const char of charList) {
+        const outfits = (await window.electronAPI.getOutfits(char)) as string[]
+        map[char] = outfits
+      }
+      setOutfitsMap(map)
     })
   }, [])
 
   const handleSave = async () => {
-    await window.electronAPI.setConfig({ llm, tts })
+    await window.electronAPI.setConfig({ llmProfiles, ttsProfiles, characterProfiles })
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
   }
@@ -64,120 +91,223 @@ export default function SettingsPage() {
   const handleSelectFolder = async () => {
     const folder = (await window.electronAPI.selectFolder()) as string | null
     if (folder) {
-      setCharacter((prev) => ({ ...prev, dataPath: folder }))
-      await window.electronAPI.setConfig({ character: { ...character, dataPath: folder } })
+      setDataPath(folder)
+      const cfg = (await window.electronAPI.getConfig()) as Record<string, unknown>
+      const char = (cfg.character as Record<string, unknown>) || {}
+      await window.electronAPI.setConfig({ character: { ...char, dataPath: folder } })
     }
+  }
+
+  const updateLLMProfile = (id: string, patch: Partial<LLMProfile>) => {
+    setLlmProfiles((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p)))
+  }
+
+  const updateTTSProfile = (id: string, patch: Partial<TTSProfile>) => {
+    setTtsProfiles((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p)))
+  }
+
+  const updateCharProfile = (charName: string, patch: Partial<CharacterProfile>) => {
+    setCharacterProfiles((prev) => ({
+      ...prev,
+      [charName]: { persona: '', llmProfileId: '', ttsProfileId: '', ...prev[charName], ...patch },
+    }))
   }
 
   return (
     <div style={styles.page}>
       <h2 style={styles.pageTitle}>爱巴基设置</h2>
 
-      {/* 模型设置 */}
-      <Section title="模型（LLM）">
-        <Field label="API 类型">
-          <select
-            value={llm.apiMode}
-            onChange={(e) => setLlm({ ...llm, apiMode: e.target.value as 'openai' | 'anthropic' })}
-            style={styles.select}
-          >
-            <option value="openai">OpenAI 兼容（推荐）</option>
-            <option value="anthropic">Anthropic 原生</option>
-          </select>
-        </Field>
-        <Field label="API Key">
+      {/* 区块一：角色资源文件夹 */}
+      <Section title="角色资源文件夹">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
           <input
-            type="password"
-            value={llm.apiKey}
-            onChange={(e) => setLlm({ ...llm, apiKey: e.target.value })}
-            placeholder="sk-..."
-            style={styles.input}
+            value={dataPath}
+            readOnly
+            placeholder="未选择文件夹"
+            style={{ ...styles.input, flex: 1, color: '#888' }}
           />
-        </Field>
-        <Field label="Base URL">
-          <input
-            value={llm.baseURL}
-            onChange={(e) => setLlm({ ...llm, baseURL: e.target.value })}
-            placeholder="留空使用官方默认地址"
-            style={styles.input}
-          />
-        </Field>
-        <Field label="模型">
-          <input
-            value={llm.model}
-            onChange={(e) => setLlm({ ...llm, model: e.target.value })}
-            placeholder="gpt-4o-mini"
-            style={styles.input}
-          />
-        </Field>
-        <Field label="角色人设">
-          <textarea
-            value={llm.persona}
-            onChange={(e) => setLlm({ ...llm, persona: e.target.value })}
-            rows={2}
-            style={{ ...styles.input, resize: 'vertical' as const }}
-          />
-        </Field>
+          <button onClick={handleSelectFolder} style={styles.secondaryButton}>
+            更换…
+          </button>
+        </div>
+        <p style={styles.hint}>
+          文件夹格式：<code style={styles.code}>{`{角色名}/{服装名}/{表情名}[数字].webm`}</code>
+          <br />
+          例：<code style={styles.code}>流萤/制服/微笑.webm</code>
+        </p>
       </Section>
 
-      {/* TTS 设置 */}
-      <Section title="语音合成（TTS）">
-        <Field label="启用 TTS">
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-            <input
-              type="checkbox"
-              checked={tts.enabled}
-              onChange={(e) => setTts({ ...tts, enabled: e.target.checked })}
-            />
-            <span style={{ fontSize: 13, color: '#666' }}>使用 MiniMax TTS 朗读角色台词</span>
-          </label>
-        </Field>
-        {tts.enabled && (
-          <>
+      {/* 区块二：LLM 模型列表 */}
+      <Section title="LLM 模型">
+        {llmProfiles.map((p) => (
+          <div key={p.id} style={styles.card}>
+            <div style={styles.cardHeader}>
+              <input
+                value={p.name}
+                onChange={(e) => updateLLMProfile(p.id, { name: e.target.value })}
+                placeholder="模型名称"
+                style={{ ...styles.input, flex: 1 }}
+              />
+              <button
+                onClick={() => setLlmProfiles((prev) => prev.filter((x) => x.id !== p.id))}
+                style={styles.deleteButton}
+              >
+                删除
+              </button>
+            </div>
+            <Field label="API 类型">
+              <select
+                value={p.apiMode}
+                onChange={(e) => updateLLMProfile(p.id, { apiMode: e.target.value as 'openai' | 'anthropic' })}
+                style={styles.select}
+              >
+                <option value="openai">OpenAI 兼容</option>
+                <option value="anthropic">Anthropic 兼容</option>
+              </select>
+            </Field>
             <Field label="API Key">
               <input
                 type="password"
-                value={tts.apiKey}
-                onChange={(e) => setTts({ ...tts, apiKey: e.target.value })}
+                value={p.apiKey}
+                onChange={(e) => updateLLMProfile(p.id, { apiKey: e.target.value })}
+                placeholder="sk-..."
+                style={styles.input}
+              />
+            </Field>
+            <Field label="Base URL">
+              <input
+                value={p.baseURL}
+                onChange={(e) => updateLLMProfile(p.id, { baseURL: e.target.value })}
+                placeholder="留空使用官方地址"
+                style={styles.input}
+              />
+            </Field>
+            <Field label="模型">
+              <input
+                value={p.model}
+                onChange={(e) => updateLLMProfile(p.id, { model: e.target.value })}
+                placeholder="gpt-4o-mini"
+                style={styles.input}
+              />
+            </Field>
+          </div>
+        ))}
+        <button onClick={() => setLlmProfiles((prev) => [...prev, newLLMProfile()])} style={styles.addButton}>
+          + 添加 LLM 模型
+        </button>
+      </Section>
+
+      {/* 区块三：TTS 模型列表 */}
+      <Section title="TTS 语音合成">
+        {ttsProfiles.map((p) => (
+          <div key={p.id} style={styles.card}>
+            <div style={styles.cardHeader}>
+              <input
+                value={p.name}
+                onChange={(e) => updateTTSProfile(p.id, { name: e.target.value })}
+                placeholder="TTS 名称"
+                style={{ ...styles.input, flex: 1 }}
+              />
+              <button
+                onClick={() => setTtsProfiles((prev) => prev.filter((x) => x.id !== p.id))}
+                style={styles.deleteButton}
+              >
+                删除
+              </button>
+            </div>
+            <Field label="供应商">
+              <select value={p.provider} style={styles.select} disabled>
+                <option value="minimax">MiniMax</option>
+              </select>
+            </Field>
+            <Field label="API Key">
+              <input
+                type="password"
+                value={p.apiKey}
+                onChange={(e) => updateTTSProfile(p.id, { apiKey: e.target.value })}
                 placeholder="MiniMax API Key"
+                style={styles.input}
+              />
+            </Field>
+            <Field label="模型">
+              <input
+                value={p.model}
+                onChange={(e) => updateTTSProfile(p.id, { model: e.target.value })}
+                placeholder="speech-01"
                 style={styles.input}
               />
             </Field>
             <Field label="Voice ID">
               <input
-                value={tts.voiceId}
-                onChange={(e) => setTts({ ...tts, voiceId: e.target.value })}
+                value={p.voiceId}
+                onChange={(e) => updateTTSProfile(p.id, { voiceId: e.target.value })}
                 placeholder="female-tianmei"
                 style={styles.input}
               />
             </Field>
-          </>
-        )}
+          </div>
+        ))}
+        <button onClick={() => setTtsProfiles((prev) => [...prev, newTTSProfile()])} style={styles.addButton}>
+          + 添加 TTS 模型
+        </button>
       </Section>
 
-      {/* 角色文件夹 */}
-      <Section title="角色资源文件夹">
-        <div style={{ marginBottom: 10 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-            <input
-              value={character.dataPath}
-              readOnly
-              placeholder="未选择文件夹"
-              style={{ ...styles.input, flex: 1, color: '#888' }}
-            />
-            <button onClick={handleSelectFolder} style={styles.secondaryButton}>
-              更换…
-            </button>
-          </div>
-          <p style={styles.hint}>
-            文件夹格式：<code style={styles.code}>{`{角色名}/{服装名}/{表情名}[数字].webm`}</code>
-            <br />
-            例：<code style={styles.code}>流萤/制服/微笑.webm</code>、
-            <code style={styles.code}>流萤/制服/平静1.1.webm</code>
-            <br />
-            添加角色：在文件夹中新建对应目录结构即可。删除角色：删除对应目录。
-          </p>
-        </div>
+      {/* 区块四：角色列表 */}
+      <Section title="角色配置">
+        {characters.length === 0 && (
+          <p style={styles.hint}>未扫描到角色，请先选择角色资源文件夹。</p>
+        )}
+        {characters.map((char) => {
+          const cp = characterProfiles[char] || { persona: '', llmProfileId: '', ttsProfileId: '' }
+          const outfits = outfitsMap[char] || []
+          return (
+            <div key={char} style={styles.card}>
+              <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 8, color: '#1d1d1f' }}>
+                {char}
+              </div>
+              {outfits.length > 0 && (
+                <div style={styles.hint}>服装：{outfits.join('、')}</div>
+              )}
+              <Field label="人设">
+                <textarea
+                  value={cp.persona}
+                  onChange={(e) => updateCharProfile(char, { persona: e.target.value })}
+                  rows={4}
+                  placeholder="可爱的二次元角色"
+                  style={{ ...styles.input, resize: 'vertical' as const }}
+                />
+              </Field>
+              <Field label="LLM 模型">
+                <select
+                  value={cp.llmProfileId}
+                  onChange={(e) => updateCharProfile(char, { llmProfileId: e.target.value })}
+                  style={styles.select}
+                >
+                  <option value="">默认（第一个）</option>
+                  {llmProfiles.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="TTS 模型">
+                <select
+                  value={cp.ttsProfileId}
+                  onChange={(e) => updateCharProfile(char, { ttsProfileId: e.target.value })}
+                  style={styles.select}
+                >
+                  <option value="">默认（第一个）</option>
+                  {ttsProfiles.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            </div>
+          )
+        })}
       </Section>
 
       {/* 保存按钮 */}
@@ -212,7 +342,7 @@ const styles: Record<string, React.CSSProperties> = {
   page: {
     fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif',
     background: '#f5f5f7',
-    minHeight: '100vh',
+    height: '100%',
     overflowY: 'auto',
   },
   pageTitle: {
@@ -239,14 +369,26 @@ const styles: Record<string, React.CSSProperties> = {
     textTransform: 'uppercase' as const,
     letterSpacing: 0.5,
   },
+  card: {
+    border: '1px solid #e5e5ea',
+    borderRadius: 8,
+    padding: '10px 12px',
+    marginBottom: 10,
+  },
+  cardHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
   field: {
     display: 'flex',
     alignItems: 'flex-start',
-    marginBottom: 10,
+    marginBottom: 8,
     gap: 10,
   },
   label: {
-    width: 80,
+    width: 72,
     fontSize: 13,
     color: '#3a3a3c',
     paddingTop: 6,
@@ -290,10 +432,31 @@ const styles: Record<string, React.CSSProperties> = {
     cursor: 'pointer',
     whiteSpace: 'nowrap' as const,
   },
+  addButton: {
+    background: 'transparent',
+    color: '#007aff',
+    border: '1px dashed #007aff',
+    borderRadius: 6,
+    padding: '6px 12px',
+    fontSize: 13,
+    cursor: 'pointer',
+    width: '100%',
+    marginTop: 4,
+  },
+  deleteButton: {
+    background: '#ff3b30',
+    color: '#fff',
+    border: 'none',
+    borderRadius: 6,
+    padding: '5px 10px',
+    fontSize: 12,
+    cursor: 'pointer',
+    whiteSpace: 'nowrap' as const,
+  },
   hint: {
     fontSize: 12,
     color: '#888',
-    margin: 0,
+    margin: '0 0 8px',
     lineHeight: 1.6,
   },
   code: {

@@ -32,9 +32,6 @@ export function createWindow(): BrowserWindow {
     },
   })
 
-  // 默认非锁定：鼠标穿透（forward: true 允许拖拽区域仍可接收事件）
-  mainWindow.setIgnoreMouseEvents(!config.window.locked, { forward: true })
-
   // 始终置顶
   mainWindow.setAlwaysOnTop(true, 'screen-saver')
 
@@ -71,11 +68,6 @@ export function getMainWindow(): BrowserWindow | null {
  */
 export function setLocked(locked: boolean): void {
   if (!mainWindow) return
-  if (locked) {
-    mainWindow.setIgnoreMouseEvents(false)
-  } else {
-    mainWindow.setIgnoreMouseEvents(true, { forward: true })
-  }
   mainWindow.webContents.send('update-lock-state', locked)
   setConfig({ window: { ...getConfig().window, locked } })
 }

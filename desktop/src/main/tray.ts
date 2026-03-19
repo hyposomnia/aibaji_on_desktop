@@ -135,8 +135,7 @@ function buildContextMenu(): Electron.Menu {
       },
     },
     { type: 'separator' },
-    { label: '模型与 TTS 设置…', click: () => openSettings() },
-    { label: '其他设置…', click: () => openSettings() },
+    { label: '设置…', click: () => openSettings() },
     { type: 'separator' },
     {
       label: '退出',

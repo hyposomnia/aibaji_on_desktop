@@ -6,7 +6,7 @@ import { createWindow, getMainWindow, registerWindowHandlers } from './window'
 import { startServer, onEvent, stopServer } from './server'
 import { initTray, refreshTray } from './tray'
 import { initVideoQueue, onVideoEnded, enqueueEmotion, setCharacterOutfit } from './videoQueue'
-import { processEvent } from './llm'
+import { processEvent, resolveCharacterLLM } from './llm'
 import { synthesize } from './tts'
 import { openSettings } from './settings'
 
@@ -78,19 +78,26 @@ async function bootstrap(): Promise<void> {
     const currentConfig = getConfig()
     const { name: char, outfit, dataPath: dp } = currentConfig.character
     const emotions = getEmotions(dp, char, outfit)
-    await processEvent(eventData, emotions, {
-      onEmotion: (emotion) => {
-        enqueueEmotion(emotion)
+    const { profile, persona } = resolveCharacterLLM(char)
+    await processEvent(
+      eventData,
+      emotions,
+      {
+        onEmotion: (emotion) => {
+          enqueueEmotion(emotion)
+        },
+        onText: (text) => {
+          const currentWin = getMainWindow()
+          if (currentWin && text) {
+            synthesize(text, currentWin).catch((err) => {
+              console.error('[aibaji] TTS error:', err)
+            })
+          }
+        },
       },
-      onText: (text) => {
-        const currentWin = getMainWindow()
-        if (currentWin && text) {
-          synthesize(text, currentWin).catch((err) => {
-            console.error('[aibaji] TTS error:', err)
-          })
-        }
-      },
-    })
+      profile,
+      persona
+    )
   })
 }
 

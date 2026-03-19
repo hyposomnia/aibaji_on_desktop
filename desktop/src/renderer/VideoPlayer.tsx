@@ -39,18 +39,14 @@ export default function VideoPlayer({ onContextMenu }: Props) {
     const api = window.electronAPI
     if (!api) return
 
-    // 鼠标进入窗口：停止穿透，允许拖拽和点击
-    const onMouseMove = () => {
-      api.setIgnoreMouseEvents(false)
-    }
-    // 鼠标离开窗口：恢复穿透（非锁定模式）
-    const onMouseLeave = () => {
-      if (!lockedRef.current) {
-        api.setIgnoreMouseEvents(true)
-      }
-    }
-    window.addEventListener('mousemove', onMouseMove)
-    document.addEventListener('mouseleave', onMouseLeave)
+    // 初始化拖拽区域（读取 config 中的 locked 状态）
+    api.getConfig().then((cfg) => {
+      const c = cfg as Record<string, unknown>
+      const win = (c.window as Record<string, unknown>) || {}
+      const locked = !!win.locked
+      lockedRef.current = locked
+      document.body.style.webkitAppRegion = locked ? 'no-drag' : 'drag'
+    })
 
     // 监听播放视频指令
     api.onPlayVideo((path: string) => {
@@ -75,10 +71,6 @@ export default function VideoPlayer({ onContextMenu }: Props) {
       document.body.style.webkitAppRegion = locked ? 'no-drag' : 'drag'
     })
 
-    return () => {
-      window.removeEventListener('mousemove', onMouseMove)
-      document.removeEventListener('mouseleave', onMouseLeave)
-    }
   }, [])
 
   const handleVideoEnded = () => {
@@ -110,7 +102,8 @@ export default function VideoPlayer({ onContextMenu }: Props) {
           height: '100%',
           objectFit: 'contain',
           background: 'transparent',
-        }}
+          WebkitAppRegion: 'no-drag',
+        } as React.CSSProperties}
         playsInline
       />
     </div>

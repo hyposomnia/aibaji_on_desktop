@@ -10,10 +10,10 @@ export function openSettings(): void {
   }
 
   settingsWindow = new BrowserWindow({
-    width: 560,
-    height: 620,
+    width: 580,
+    height: 700,
     title: '爱巴基设置',
-    resizable: false,
+    resizable: true,
     webPreferences: {
       preload: path.join(__dirname, '../preload/index.js'),
       contextIsolation: true,

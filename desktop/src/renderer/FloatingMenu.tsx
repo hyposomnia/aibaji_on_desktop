@@ -70,7 +70,7 @@ export default function FloatingMenu({ x, y, onClose }: Props) {
   return (
     <>
       {/* 点击外部关闭 */}
-      <div style={{ position: 'fixed', inset: 0, zIndex: 999 }} onMouseDown={onClose} />
+      <div style={{ position: 'fixed', inset: 0, zIndex: 999, WebkitAppRegion: 'no-drag' } as React.CSSProperties} onMouseDown={onClose} />
       <div
         style={{
           position: 'fixed',
@@ -78,6 +78,7 @@ export default function FloatingMenu({ x, y, onClose }: Props) {
           top,
           width: MENU_WIDTH,
           zIndex: 1000,
+          WebkitAppRegion: 'no-drag',
           background: 'rgba(18,18,18,0.93)',
           backdropFilter: 'blur(14px)',
           WebkitBackdropFilter: 'blur(14px)',
