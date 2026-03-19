@@ -9,7 +9,8 @@ win:
   icon: resources/icon.png
 files:
   - dist-electron/**
-  - dist/**
+  - dist/index.html
+  - dist/assets/**
   - resources/**
 extraResources:
   - from: "resources/icon.png"

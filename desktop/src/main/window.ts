@@ -1,4 +1,4 @@
-import { BrowserWindow, ipcMain } from 'electron'
+import { BrowserWindow, ipcMain, globalShortcut } from 'electron'
 import * as path from 'path'
 import { getConfig, setConfig } from './store'
 
@@ -34,6 +34,13 @@ export function createWindow(): BrowserWindow {
 
   // 始终置顶
   mainWindow.setAlwaysOnTop(true, 'screen-saver')
+
+  // dev 模式：Cmd+Shift+I 打开 DevTools
+  if (process.env.ELECTRON_RENDERER_URL) {
+    globalShortcut.register('CommandOrControl+Shift+I', () => {
+      mainWindow?.webContents.openDevTools({ mode: 'detach' })
+    })
+  }
 
   // 关闭时保存位置
   mainWindow.on('moved', () => {

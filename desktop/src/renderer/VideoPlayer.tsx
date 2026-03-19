@@ -1,10 +1,5 @@
 import { useEffect, useRef } from 'react'
 
-export interface ContextMenuPos {
-  x: number
-  y: number
-}
-
 // 扩展 Window 类型以支持 electronAPI
 declare global {
   interface Window {
@@ -27,11 +22,7 @@ declare global {
   }
 }
 
-interface Props {
-  onContextMenu: (pos: ContextMenuPos) => void
-}
-
-export default function VideoPlayer({ onContextMenu }: Props) {
+export default function VideoPlayer() {
   const videoRef = useRef<HTMLVideoElement>(null)
   const lockedRef = useRef(false)
 
@@ -54,15 +45,19 @@ export default function VideoPlayer({ onContextMenu }: Props) {
       if (!video) return
       video.src = encodeURI(`file://${path}`)
       video.play().catch((e) => {
-        // AbortError 是正常现象（新 src 打断了上一个 play()），忽略
         if (e.name !== 'AbortError') console.error('video play error:', e)
       })
     })
 
     // 监听播放音频指令（base64 mp3）
     api.onPlayAudio((base64: string) => {
+      console.log(`[aibaji] renderer: play-audio received, base64 length=${base64.length}`)
       const audio = new Audio(`data:audio/mpeg;base64,${base64}`)
-      audio.play().catch(console.error)
+      audio.play().then(() => {
+        console.log('[aibaji] renderer: audio playing OK')
+      }).catch((e) => {
+        console.error('[aibaji] renderer: audio play error', e)
+      })
     })
 
     // 监听锁定状态变化
@@ -70,16 +65,10 @@ export default function VideoPlayer({ onContextMenu }: Props) {
       lockedRef.current = locked
       document.body.style.webkitAppRegion = locked ? 'no-drag' : 'drag'
     })
-
   }, [])
 
   const handleVideoEnded = () => {
     window.electronAPI?.sendVideoEnded()
-  }
-
-  const handleContextMenu = (e: React.MouseEvent) => {
-    e.preventDefault()
-    onContextMenu({ x: e.clientX, y: e.clientY })
   }
 
   return (
@@ -96,14 +85,12 @@ export default function VideoPlayer({ onContextMenu }: Props) {
       <video
         ref={videoRef}
         onEnded={handleVideoEnded}
-        onContextMenu={handleContextMenu}
         style={{
           width: '100%',
           height: '100%',
           objectFit: 'contain',
           background: 'transparent',
-          WebkitAppRegion: 'no-drag',
-        } as React.CSSProperties}
+        }}
         playsInline
       />
     </div>

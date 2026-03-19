@@ -201,8 +201,11 @@ export async function processEvent(
   const model = llmProfile?.model ?? config.llm.model
   const effectivePersona = persona ?? config.llm.persona ?? '可爱的伴侣'
 
+  console.log(`[aibaji] processEvent: apiMode=${apiMode}, apiKey=${apiKey ? '***' : 'EMPTY'}, model=${model}, emotions=${emotions}`)
+
   // 降级：未配置 API Key
   if (!apiKey || emotions.length === 0) {
+    console.log(`[aibaji] processEvent: fallback to idle (apiKey empty or no emotions)`)
     callbacks.onEmotion('平静')
     callbacks.onText('')
     return
@@ -210,7 +213,9 @@ export async function processEvent(
 
   const opts = { apiKey, baseURL, model }
   const message = formatEventMessage(eventData)
-  const systemPrompt = buildSystemPrompt(effectivePersona, emotions)
+  // 不让 LLM 选平静——收到事件说明有交互，应有明显表情
+  const emotionsForLLM = emotions.filter((e) => !e.startsWith('平静'))
+  const systemPrompt = buildSystemPrompt(effectivePersona, emotionsForLLM.length > 0 ? emotionsForLLM : emotions)
   try {
     if (apiMode === 'anthropic') {
       await processWithAnthropic(message, systemPrompt, callbacks, opts)
@@ -219,8 +224,8 @@ export async function processEvent(
     }
   } catch (err) {
     console.error('[aibaji] LLM error:', err)
-    // 降级：出错时使用平静 idle
     callbacks.onEmotion('平静')
     callbacks.onText('')
   }
 }
+

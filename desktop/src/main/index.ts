@@ -79,17 +79,24 @@ async function bootstrap(): Promise<void> {
     const { name: char, outfit, dataPath: dp } = currentConfig.character
     const emotions = getEmotions(dp, char, outfit)
     const { profile, persona } = resolveCharacterLLM(char)
+    console.log(`[aibaji] event received: ${eventData.hook_event_name}, char=${char}, emotions=${emotions.length}, profile=${profile?.name ?? 'none(fallback)'}`)
     await processEvent(
       eventData,
       emotions,
       {
         onEmotion: (emotion) => {
-          enqueueEmotion(emotion)
+          // 收到事件时禁用平静表情（与 idle 无法区分），强制换成其他表情
+          const nonCalm = emotions.filter((e) => !e.startsWith('平静'))
+          const finalEmotion = emotion.startsWith('平静') && nonCalm.length > 0
+            ? nonCalm[Math.floor(Math.random() * nonCalm.length)]
+            : emotion
+          enqueueEmotion(finalEmotion)
         },
         onText: (text) => {
+          console.log(`[aibaji] onText: "${text.slice(0, 30)}..."`)
           const currentWin = getMainWindow()
           if (currentWin && text) {
-            synthesize(text, currentWin).catch((err) => {
+            synthesize(text, currentWin, char).catch((err) => {
               console.error('[aibaji] TTS error:', err)
             })
           }

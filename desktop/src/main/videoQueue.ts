@@ -116,6 +116,7 @@ export function enqueue(videoPath: string): void {
  */
 export function enqueueEmotion(emotion: string): void {
   const videoPath = resolveVideo(emotion)
+  console.log(`[aibaji] enqueueEmotion: emotion="${emotion}", resolved="${videoPath ?? 'NOT FOUND'}"`)
   if (videoPath) {
     enqueue(videoPath)
   }
