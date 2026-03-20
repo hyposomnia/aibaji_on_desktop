@@ -13,18 +13,27 @@
 
 安装完成后插件自动注册所有 Hook，无需重启，下一次工具调用即生效。
 
-## 监听的事件
+## 消息格式
 
-| 事件 | 触发时机 | 转发内容 |
-|------|----------|----------|
-| `UserPromptSubmit` | 用户发送消息时 | 用户原文（代码块替换为占位符） |
-| `PreToolUse` | 工具调用前 | 工具名称 |
-| `PostToolUse` | 工具调用后 | 工具名称 |
-| `Stop` | 回复结束时 | 固定映射为"任务已完成" |
-| `Notification` | Claude Code 发出通知时 | 通知文本；权限/授权类自动标注为"需要用户操作" |
-| `PermissionRequest` | 请求工具权限时 | 固定映射为"需要用户授权：{工具名}" |
+插件在发送前完成全部语义映射，向桌面应用发送精简 JSON：
 
-插件只转发语义摘要，不会转发工具参数、执行结果、代码 diff 等大体积内容。
+```json
+{ "event": "PreToolUse", "message": "Prepare to use Bash" }
+```
+
+各事件的默认映射规则：
+
+| 事件 | 触发时机 | 发送的 `message` |
+|------|----------|-----------------|
+| `UserPromptSubmit` | 用户发送消息时 | `Your instruction has been received.` |
+| `PreToolUse` | 工具调用前 | `Prepare to use {工具名}` |
+| `PostToolUse` | 工具调用后 | `{工具名} finished` |
+| `Stop` | 回复结束时 | `Task complete` |
+| `Notification`（权限类） | Claude Code 发出权限相关通知时 | `Need your confirmation to {通知内容}` |
+| `Notification`（其他） | Claude Code 发出普通通知时 | `{通知内容}` |
+| `PermissionRequest` | 请求工具权限时 | `Need your authentication to use {工具名} ({说明})` |
+
+插件不会转发工具参数、执行结果、代码 diff 等大体积内容。
 
 ## 限速
 
@@ -39,7 +48,17 @@
   "server_url": "http://localhost:5287",
   "token": "",
   "events": ["PreToolUse", "PostToolUse", "Stop", "Notification", "UserPromptSubmit", "PermissionRequest"],
-  "include_content": false
+  "include_content": false,
+  "messages": {
+    "PreToolUse": "Prepare to use {tool}",
+    "PostToolUse": "{tool} finished",
+    "Stop": "Task complete",
+    "Notification": "{msg}",
+    "NotificationPermission": "Need your confirmation to {msg}",
+    "PermissionRequest": "Need your authentication to use {tool} ({msg})",
+    "UserPromptSubmit": "Your instruction has been received."
+  },
+  "notification_permission_keywords": ["permission", "allow", "deny", "approv", "confirm", "authoriz"]
 }
 ```
 
@@ -48,6 +67,8 @@
 | `server_url` | 桌面应用地址 | `http://localhost:5287` |
 | `token` | Bearer Token 认证，与桌面应用服务端保持一致 | `""` |
 | `events` | 要监听的事件类型 | 全部六类 |
+| `messages` | 各事件的消息模板，支持 `{tool}`、`{msg}` 占位符 | 见上方默认值 |
+| `notification_permission_keywords` | 用于识别权限类通知的关键词列表 | 见上方默认值 |
 | `include_content` | 预留字段 | `false` |
 
 也可通过环境变量配置（优先级低于 config.json）：
@@ -58,7 +79,7 @@
 ## 依赖
 
 - `curl`（系统内置）
-- `jq`（推荐安装；用于解析 config.json 和精简事件数据；未安装时 fallback 到环境变量）
+- `jq`（推荐安装；用于解析配置和构建 JSON；未安装时使用内置默认值和简单字符串拼接）
 
 ## 测试
 
