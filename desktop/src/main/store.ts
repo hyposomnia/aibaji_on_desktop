@@ -63,6 +63,7 @@ export interface AppConfig {
   llmProfiles: LLMProfile[]
   ttsProfiles: TTSProfile[]
   characterProfiles: Record<string, CharacterProfile>
+  autostart: boolean
 }
 
 const defaults: AppConfig = {
@@ -104,6 +105,7 @@ const defaults: AppConfig = {
   llmProfiles: [],
   ttsProfiles: [],
   characterProfiles: {},
+  autostart: true,
 }
 
 // electron-store v10 是 ESM only，需要动态导入

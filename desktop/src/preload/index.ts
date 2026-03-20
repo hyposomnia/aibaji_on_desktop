@@ -39,6 +39,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.once('need-setup', callback)
   },
   sendSetupComplete: () => ipcRenderer.send('setup-complete'),
+  // 开机自启动
+  getAutostart: (): Promise<boolean> => ipcRenderer.invoke('get-autostart'),
+  setAutostart: (enabled: boolean): Promise<void> => ipcRenderer.invoke('set-autostart', enabled),
   // 退出
   quit: () => ipcRenderer.send('quit'),
   // 通知 main 进程渲染层已就绪（IPC 监听已注册）

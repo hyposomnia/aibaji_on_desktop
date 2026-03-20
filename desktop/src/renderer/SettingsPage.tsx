@@ -64,6 +64,7 @@ export default function SettingsPage() {
   const [windowMs, setWindowMs] = useState(60000)
   const [windowLimit, setWindowLimit] = useState(5)
   const [systemPromptTemplate, setSystemPromptTemplate] = useState(DEFAULT_TEMPLATE)
+  const [autostart, setAutostart] = useState(true)
 
   const [saved, setSaved] = useState(false)
 
@@ -89,6 +90,8 @@ export default function SettingsPage() {
         setCharacterProfiles(c.characterProfiles as Record<string, CharacterProfile>)
       }
     })
+
+    window.electronAPI.getAutostart().then((val) => setAutostart(val))
 
     window.electronAPI.getCharacters().then(async (chars) => {
       const charList = chars as string[]
@@ -250,6 +253,30 @@ export default function SettingsPage() {
       {/* 系统设置 tab */}
       {activeTab === 'system' && (
         <>
+          <Section title="启动设置">
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div>
+                <div style={{ fontSize: 13, color: '#1d1d1f' }}>开机自启动</div>
+                <div style={styles.hint}>登录后自动启动爱巴基</div>
+              </div>
+              <label style={styles.toggle}>
+                <input
+                  type="checkbox"
+                  checked={autostart}
+                  onChange={async (e) => {
+                    const val = e.target.checked
+                    setAutostart(val)
+                    await window.electronAPI.setAutostart(val)
+                  }}
+                  style={{ display: 'none' }}
+                />
+                <span style={{ ...styles.toggleTrack, background: autostart ? '#007aff' : '#d1d1d6' }}>
+                  <span style={{ ...styles.toggleThumb, transform: autostart ? 'translateX(20px)' : 'translateX(2px)' }} />
+                </span>
+              </label>
+            </div>
+          </Section>
+
           <Section title="LLM 模型">
             {llmProfiles.map((p) => (
               <div key={p.id} style={styles.card}>
@@ -603,6 +630,28 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#888',
     margin: '0 0 8px',
     lineHeight: 1.6,
+  },
+  toggle: {
+    cursor: 'pointer',
+    flexShrink: 0,
+  },
+  toggleTrack: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    width: 44,
+    height: 26,
+    borderRadius: 13,
+    transition: 'background 0.2s',
+    position: 'relative' as const,
+  },
+  toggleThumb: {
+    position: 'absolute' as const,
+    width: 22,
+    height: 22,
+    borderRadius: '50%',
+    background: '#fff',
+    boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+    transition: 'transform 0.2s',
   },
   code: {
     background: '#f0f0f5',

@@ -20,6 +20,8 @@ declare global {
       onNeedSetup: (callback: () => void) => void
       sendSetupComplete: () => void
       quit: () => void
+      getAutostart: () => Promise<boolean>
+      setAutostart: (enabled: boolean) => Promise<void>
     }
   }
 }

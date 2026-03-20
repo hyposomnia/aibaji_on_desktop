@@ -17,6 +17,10 @@ async function bootstrap(): Promise<void> {
   // 1. 初始化 store
   await initStore()
 
+  // 应用开机自启动设置（默认开启）
+  const autostartConfig = getConfig()
+  app.setLoginItemSettings({ openAtLogin: autostartConfig.autostart })
+
   // 2. 创建透明悬浮窗口
   const win = createWindow()
 
@@ -172,6 +176,16 @@ function registerAdditionalHandlers(): void {
   // 退出
   ipcMain.on('quit', () => {
     app.quit()
+  })
+
+  // 开机自启动
+  ipcMain.handle('get-autostart', () => {
+    return getConfig().autostart
+  })
+
+  ipcMain.handle('set-autostart', (_, enabled: boolean) => {
+    setConfig({ autostart: enabled })
+    app.setLoginItemSettings({ openAtLogin: enabled })
   })
 }
 
