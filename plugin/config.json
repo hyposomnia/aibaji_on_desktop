@@ -10,7 +10,7 @@
     "Notification": "{msg}",
     "NotificationPermission": "Need your confirmation to {msg}",
     "PermissionRequest": "Need your authentication to use {tool} ({msg})",
-    "UserPromptSubmit": "Your instruction has been received."
+    "UserPromptSubmit": "Your instruction has been received, right on the way to work."
   },
   "notification_permission_keywords": ["permission", "allow", "deny", "approv", "confirm", "authoriz"]
 }
