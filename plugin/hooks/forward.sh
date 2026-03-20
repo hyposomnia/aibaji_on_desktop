@@ -64,6 +64,13 @@ else
   TOKEN="${AIBAJI_TOKEN:-}"
 fi
 
+# 精简事件数据：剥掉可能含大量代码/diff 的字段，只保留语义关键信息
+if command -v jq &>/dev/null; then
+  SEND_DATA=$(echo "$EVENT_DATA" | jq 'del(.tool_input, .tool_response, .last_assistant_message)')
+else
+  SEND_DATA="$EVENT_DATA"
+fi
+
 # 构建 curl 参数
 CURL_ARGS=(
   -s
@@ -71,7 +78,7 @@ CURL_ARGS=(
   "${SERVER_URL}/event"
   -H "Content-Type: application/json"
   --max-time 2
-  -d "$EVENT_DATA"
+  -d "$SEND_DATA"
 )
 
 # 添加可选的 Bearer Token 认证
