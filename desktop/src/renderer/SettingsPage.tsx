@@ -250,7 +250,7 @@ export default function SettingsPage() {
       {/* 系统设置 tab */}
       {activeTab === 'system' && (
         <>
-          <Section title={t(lang, 'sectionStartup')}>
+          <Section title={t(lang, 'sectionGeneral')}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div>
                 <div style={{ fontSize: 13, color: '#1d1d1f' }}>{t(lang, 'autostartLabel')}</div>
@@ -272,9 +272,7 @@ export default function SettingsPage() {
                 </span>
               </label>
             </div>
-          </Section>
-
-          <Section title={t(lang, 'sectionWindow')}>
+            <div style={styles.divider} />
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div style={styles.hint}>{t(lang, 'centerWindowHint')}</div>
               <button
@@ -284,18 +282,19 @@ export default function SettingsPage() {
                 {t(lang, 'btnCenterWindow')}
               </button>
             </div>
-          </Section>
-
-          <Section title={t(lang, 'sectionLanguage')}>
-            <select
-              value={lang}
-              onChange={(e) => handleLangChange(e.target.value as Lang)}
-              style={{ ...styles.select, width: 'auto', minWidth: 160 }}
-            >
-              {(Object.entries(LANG_LABELS) as [Lang, string][]).map(([code, label]) => (
-                <option key={code} value={code}>{label}</option>
-              ))}
-            </select>
+            <div style={styles.divider} />
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ fontSize: 13, color: '#1d1d1f' }}>{t(lang, 'sectionLanguage')}</div>
+              <select
+                value={lang}
+                onChange={(e) => handleLangChange(e.target.value as Lang)}
+                style={{ ...styles.select, width: 'auto', minWidth: 160 }}
+              >
+                {(Object.entries(LANG_LABELS) as [Lang, string][]).map(([code, label]) => (
+                  <option key={code} value={code}>{label}</option>
+                ))}
+              </select>
+            </div>
           </Section>
 
           <Section title={t(lang, 'sectionLLM')}>
@@ -328,6 +327,14 @@ export default function SettingsPage() {
                   </div>
                   {expanded && (
                     <>
+                      <Field label={t(lang, 'fieldName')}>
+                        <input
+                          value={p.name}
+                          onChange={(e) => updateLLMProfile(p.id, { name: e.target.value })}
+                          placeholder={t(lang, 'modelNamePlaceholder')}
+                          style={styles.input}
+                        />
+                      </Field>
                       <Field label={t(lang, 'fieldAPIType')}>
                         <select
                           value={p.apiMode}
@@ -352,14 +359,6 @@ export default function SettingsPage() {
                           value={p.baseURL}
                           onChange={(e) => updateLLMProfile(p.id, { baseURL: e.target.value })}
                           placeholder={t(lang, 'baseURLPlaceholder')}
-                          style={styles.input}
-                        />
-                      </Field>
-                      <Field label={t(lang, 'fieldName')}>
-                        <input
-                          value={p.name}
-                          onChange={(e) => updateLLMProfile(p.id, { name: e.target.value })}
-                          placeholder={t(lang, 'modelNamePlaceholder')}
                           style={styles.input}
                         />
                       </Field>
@@ -429,6 +428,14 @@ export default function SettingsPage() {
                   </div>
                   {expanded && (
                     <>
+                      <Field label={t(lang, 'fieldName')}>
+                        <input
+                          value={p.name}
+                          onChange={(e) => updateTTSProfile(p.id, { name: e.target.value })}
+                          placeholder={t(lang, 'ttsNamePlaceholder')}
+                          style={styles.input}
+                        />
+                      </Field>
                       <Field label={t(lang, 'fieldProvider')}>
                         <select value={p.provider} style={styles.select} disabled>
                           <option value="minimax">MiniMax</option>
@@ -440,14 +447,6 @@ export default function SettingsPage() {
                           value={p.apiKey}
                           onChange={(e) => updateTTSProfile(p.id, { apiKey: e.target.value })}
                           placeholder="MiniMax API Key"
-                          style={styles.input}
-                        />
-                      </Field>
-                      <Field label={t(lang, 'fieldName')}>
-                        <input
-                          value={p.name}
-                          onChange={(e) => updateTTSProfile(p.id, { name: e.target.value })}
-                          placeholder={t(lang, 'ttsNamePlaceholder')}
                           style={styles.input}
                         />
                       </Field>
@@ -745,6 +744,11 @@ const styles: Record<string, React.CSSProperties> = {
     background: '#fff',
     boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
     transition: 'transform 0.2s',
+  },
+  divider: {
+    height: 1,
+    background: '#e5e5ea',
+    margin: '10px 0',
   },
   code: {
     background: '#f0f0f5',

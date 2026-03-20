@@ -30,6 +30,7 @@ const translations = {
     defaultFirst: 'Default (first)',
 
     // System tab
+    sectionGeneral: 'General',
     sectionStartup: 'Startup',
     autostartLabel: 'Launch at Login',
     autostartHint: 'Automatically start Aibaji after login',
@@ -99,6 +100,7 @@ const translations = {
     fieldTTSModel: 'TTS 模型',
     defaultFirst: '默认（第一个）',
 
+    sectionGeneral: '通用',
     sectionStartup: '启动设置',
     autostartLabel: '开机自启动',
     autostartHint: '登录后自动启动爱巴基',
@@ -168,6 +170,7 @@ const translations = {
     fieldTTSModel: 'TTS 模型',
     defaultFirst: '預設（第一個）',
 
+    sectionGeneral: '通用',
     sectionStartup: '啟動設定',
     autostartLabel: '開機自動啟動',
     autostartHint: '登入後自動啟動愛巴基',
@@ -237,6 +240,7 @@ const translations = {
     fieldTTSModel: 'TTS モデル',
     defaultFirst: 'デフォルト（最初）',
 
+    sectionGeneral: '一般',
     sectionStartup: '起動設定',
     autostartLabel: 'ログイン時に起動',
     autostartHint: 'ログイン後に自動的にアイバジを起動',
