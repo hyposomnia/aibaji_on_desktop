@@ -64,6 +64,7 @@ export interface AppConfig {
   ttsProfiles: TTSProfile[]
   characterProfiles: Record<string, CharacterProfile>
   autostart: boolean
+  language: 'en' | 'zh-CN' | 'zh-TW' | 'ja'
 }
 
 const defaults: AppConfig = {
@@ -106,6 +107,7 @@ const defaults: AppConfig = {
   ttsProfiles: [],
   characterProfiles: {},
   autostart: true,
+  language: 'zh-CN',
 }
 
 // electron-store v10 是 ESM only，需要动态导入

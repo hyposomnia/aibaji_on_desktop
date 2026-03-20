@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { t, LANG_LABELS, type Lang } from './i18n'
 
 interface LLMProfile {
   id: string
@@ -24,33 +25,12 @@ interface CharacterProfile {
   ttsProfileId: string
 }
 
-function newLLMProfile(): LLMProfile {
-  return {
-    id: Date.now().toString(),
-    name: '新模型',
-    apiMode: 'openai',
-    apiKey: '',
-    baseURL: '',
-    model: 'gpt-4o-mini',
-  }
-}
-
-function newTTSProfile(): TTSProfile {
-  return {
-    id: Date.now().toString(),
-    name: '新 TTS',
-    provider: 'minimax',
-    apiKey: '',
-    model: 'speech-01',
-    voiceId: '',
-  }
-}
-
 const DEFAULT_TEMPLATE =
   '你是{persona}。收到 Claude Code 的工作状态通知后，用角色口吻简短回应主人（不超过50字）。\n必须在回复开头选择一个表情，格式：[表情名]台词内容\n可用表情（只能选其中一个）：{emotions}\n示例：[微笑]主人又在努力工作了呢～'
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<'character' | 'system'>('character')
+  const [lang, setLang] = useState<Lang>('zh-CN')
 
   // 角色配置 tab 状态
   const [dataPath, setDataPath] = useState('')
@@ -89,6 +69,7 @@ export default function SettingsPage() {
       if (c.characterProfiles && typeof c.characterProfiles === 'object') {
         setCharacterProfiles(c.characterProfiles as Record<string, CharacterProfile>)
       }
+      if (c.language) setLang(c.language as Lang)
     })
 
     window.electronAPI.getAutostart().then((val) => setAutostart(val))
@@ -130,6 +111,11 @@ export default function SettingsPage() {
     }
   }
 
+  const handleLangChange = async (newLang: Lang) => {
+    setLang(newLang)
+    await window.electronAPI.setConfig({ language: newLang })
+  }
+
   const updateLLMProfile = (id: string, patch: Partial<LLMProfile>) => {
     setLlmProfiles((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p)))
   }
@@ -145,9 +131,27 @@ export default function SettingsPage() {
     }))
   }
 
+  const newLLMProfile = (): LLMProfile => ({
+    id: Date.now().toString(),
+    name: t(lang, 'newModelName'),
+    apiMode: 'openai',
+    apiKey: '',
+    baseURL: '',
+    model: 'gpt-4o-mini',
+  })
+
+  const newTTSProfile = (): TTSProfile => ({
+    id: Date.now().toString(),
+    name: t(lang, 'newTTSName'),
+    provider: 'minimax',
+    apiKey: '',
+    model: 'speech-01',
+    voiceId: '',
+  })
+
   return (
     <div style={styles.page}>
-      <h2 style={styles.pageTitle}>爱巴基设置</h2>
+      <h2 style={styles.pageTitle}>{t(lang, 'settingsTitle')}</h2>
 
       {/* Tab 栏 */}
       <div style={styles.tabBar}>
@@ -155,48 +159,44 @@ export default function SettingsPage() {
           onClick={() => setActiveTab('character')}
           style={activeTab === 'character' ? styles.tabActive : styles.tab}
         >
-          角色配置
+          {t(lang, 'tabCharacter')}
         </button>
         <button
           onClick={() => setActiveTab('system')}
           style={activeTab === 'system' ? styles.tabActive : styles.tab}
         >
-          系统设置
+          {t(lang, 'tabSystem')}
         </button>
       </div>
 
       {/* 角色配置 tab */}
       {activeTab === 'character' && (
         <>
-          <Section title="角色资源文件夹">
+          <Section title={t(lang, 'sectionCharacterFolder')}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
               <input
                 value={dataPath}
                 readOnly
-                placeholder="未选择文件夹"
+                placeholder={t(lang, 'folderNotSelected')}
                 style={{ ...styles.input, flex: 1, color: '#888' }}
               />
               <button onClick={handleSelectFolder} style={styles.secondaryButton}>
-                更换…
+                {t(lang, 'folderChange')}
               </button>
             </div>
             <p style={styles.hint}>
-              文件夹格式：<code style={styles.code}>{`{角色名}/{服装名}/{表情名}[数字].webm`}</code>
+              {t(lang, 'folderHint')}
               <br />
-              例：<code style={styles.code}>流萤/制服/微笑.webm</code>
+              <code style={styles.code}>{t(lang, 'folderExample')}</code>
             </p>
           </Section>
 
-          <Section title="角色配置">
+          <Section title={t(lang, 'sectionCharacterConfig')}>
             {characters.length === 0 && (
-              <p style={styles.hint}>未扫描到角色，请先选择角色资源文件夹。</p>
+              <p style={styles.hint}>{t(lang, 'noCharacters')}</p>
             )}
             {characters.map((char) => {
-              const cp = characterProfiles[char] || {
-                persona: '',
-                llmProfileId: '',
-                ttsProfileId: '',
-              }
+              const cp = characterProfiles[char] || { persona: '', llmProfileId: '', ttsProfileId: '' }
               const outfits = outfitsMap[char] || []
               return (
                 <div key={char} style={styles.card}>
@@ -204,42 +204,38 @@ export default function SettingsPage() {
                     {char}
                   </div>
                   {outfits.length > 0 && (
-                    <div style={styles.hint}>服装：{outfits.join('、')}</div>
+                    <div style={styles.hint}>{t(lang, 'outfits')}：{outfits.join('、')}</div>
                   )}
-                  <Field label="人设">
+                  <Field label={t(lang, 'fieldPersona')}>
                     <textarea
                       value={cp.persona}
                       onChange={(e) => updateCharProfile(char, { persona: e.target.value })}
                       rows={4}
-                      placeholder="可爱的二次元角色"
+                      placeholder={t(lang, 'personaPlaceholder')}
                       style={{ ...styles.input, resize: 'vertical' as const }}
                     />
                   </Field>
-                  <Field label="LLM 模型">
+                  <Field label={t(lang, 'fieldLLMModel')}>
                     <select
                       value={cp.llmProfileId}
                       onChange={(e) => updateCharProfile(char, { llmProfileId: e.target.value })}
                       style={styles.select}
                     >
-                      <option value="">默认（第一个）</option>
+                      <option value="">{t(lang, 'defaultFirst')}</option>
                       {llmProfiles.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.name}
-                        </option>
+                        <option key={p.id} value={p.id}>{p.name}</option>
                       ))}
                     </select>
                   </Field>
-                  <Field label="TTS 模型">
+                  <Field label={t(lang, 'fieldTTSModel')}>
                     <select
                       value={cp.ttsProfileId}
                       onChange={(e) => updateCharProfile(char, { ttsProfileId: e.target.value })}
                       style={styles.select}
                     >
-                      <option value="">默认（第一个）</option>
+                      <option value="">{t(lang, 'defaultFirst')}</option>
                       {ttsProfiles.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.name}
-                        </option>
+                        <option key={p.id} value={p.id}>{p.name}</option>
                       ))}
                     </select>
                   </Field>
@@ -253,11 +249,11 @@ export default function SettingsPage() {
       {/* 系统设置 tab */}
       {activeTab === 'system' && (
         <>
-          <Section title="启动设置">
+          <Section title={t(lang, 'sectionStartup')}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div>
-                <div style={{ fontSize: 13, color: '#1d1d1f' }}>开机自启动</div>
-                <div style={styles.hint}>登录后自动启动爱巴基</div>
+                <div style={{ fontSize: 13, color: '#1d1d1f' }}>{t(lang, 'autostartLabel')}</div>
+                <div style={styles.hint}>{t(lang, 'autostartHint')}</div>
               </div>
               <label style={styles.toggle}>
                 <input
@@ -277,24 +273,36 @@ export default function SettingsPage() {
             </div>
           </Section>
 
-          <Section title="LLM 模型">
+          <Section title={t(lang, 'sectionLanguage')}>
+            <select
+              value={lang}
+              onChange={(e) => handleLangChange(e.target.value as Lang)}
+              style={{ ...styles.select, width: 'auto', minWidth: 160 }}
+            >
+              {(Object.entries(LANG_LABELS) as [Lang, string][]).map(([code, label]) => (
+                <option key={code} value={code}>{label}</option>
+              ))}
+            </select>
+          </Section>
+
+          <Section title={t(lang, 'sectionLLM')}>
             {llmProfiles.map((p) => (
               <div key={p.id} style={styles.card}>
                 <div style={styles.cardHeader}>
                   <input
                     value={p.name}
                     onChange={(e) => updateLLMProfile(p.id, { name: e.target.value })}
-                    placeholder="模型名称"
+                    placeholder={t(lang, 'modelNamePlaceholder')}
                     style={{ ...styles.input, flex: 1 }}
                   />
                   <button
                     onClick={() => setLlmProfiles((prev) => prev.filter((x) => x.id !== p.id))}
                     style={styles.deleteButton}
                   >
-                    删除
+                    {t(lang, 'btnDelete')}
                   </button>
                 </div>
-                <Field label="API 类型">
+                <Field label={t(lang, 'fieldAPIType')}>
                   <select
                     value={p.apiMode}
                     onChange={(e) =>
@@ -302,11 +310,11 @@ export default function SettingsPage() {
                     }
                     style={styles.select}
                   >
-                    <option value="openai">OpenAI 兼容</option>
-                    <option value="anthropic">Anthropic 兼容</option>
+                    <option value="openai">{t(lang, 'apiOpenAI')}</option>
+                    <option value="anthropic">{t(lang, 'apiAnthropic')}</option>
                   </select>
                 </Field>
-                <Field label="API Key">
+                <Field label={t(lang, 'fieldAPIKey')}>
                   <input
                     type="password"
                     value={p.apiKey}
@@ -315,15 +323,15 @@ export default function SettingsPage() {
                     style={styles.input}
                   />
                 </Field>
-                <Field label="Base URL">
+                <Field label={t(lang, 'fieldBaseURL')}>
                   <input
                     value={p.baseURL}
                     onChange={(e) => updateLLMProfile(p.id, { baseURL: e.target.value })}
-                    placeholder="留空使用官方地址"
+                    placeholder={t(lang, 'baseURLPlaceholder')}
                     style={styles.input}
                   />
                 </Field>
-                <Field label="模型">
+                <Field label={t(lang, 'fieldModel')}>
                   <input
                     value={p.model}
                     onChange={(e) => updateLLMProfile(p.id, { model: e.target.value })}
@@ -337,33 +345,33 @@ export default function SettingsPage() {
               onClick={() => setLlmProfiles((prev) => [...prev, newLLMProfile()])}
               style={styles.addButton}
             >
-              + 添加 LLM 模型
+              {t(lang, 'btnAddLLM')}
             </button>
           </Section>
 
-          <Section title="TTS 语音合成">
+          <Section title={t(lang, 'sectionTTS')}>
             {ttsProfiles.map((p) => (
               <div key={p.id} style={styles.card}>
                 <div style={styles.cardHeader}>
                   <input
                     value={p.name}
                     onChange={(e) => updateTTSProfile(p.id, { name: e.target.value })}
-                    placeholder="TTS 名称"
+                    placeholder={t(lang, 'ttsNamePlaceholder')}
                     style={{ ...styles.input, flex: 1 }}
                   />
                   <button
                     onClick={() => setTtsProfiles((prev) => prev.filter((x) => x.id !== p.id))}
                     style={styles.deleteButton}
                   >
-                    删除
+                    {t(lang, 'btnDelete')}
                   </button>
                 </div>
-                <Field label="供应商">
+                <Field label={t(lang, 'fieldProvider')}>
                   <select value={p.provider} style={styles.select} disabled>
                     <option value="minimax">MiniMax</option>
                   </select>
                 </Field>
-                <Field label="API Key">
+                <Field label={t(lang, 'fieldAPIKey')}>
                   <input
                     type="password"
                     value={p.apiKey}
@@ -372,7 +380,7 @@ export default function SettingsPage() {
                     style={styles.input}
                   />
                 </Field>
-                <Field label="模型">
+                <Field label={t(lang, 'fieldModel')}>
                   <input
                     value={p.model}
                     onChange={(e) => updateTTSProfile(p.id, { model: e.target.value })}
@@ -394,12 +402,12 @@ export default function SettingsPage() {
               onClick={() => setTtsProfiles((prev) => [...prev, newTTSProfile()])}
               style={styles.addButton}
             >
-              + 添加 TTS 模型
+              {t(lang, 'btnAddTTS')}
             </button>
           </Section>
 
-          <Section title="事件节流">
-            <Field label="时间窗口">
+          <Section title={t(lang, 'sectionThrottle')}>
+            <Field label={t(lang, 'fieldTimeWindow')}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <input
                   type="number"
@@ -410,10 +418,10 @@ export default function SettingsPage() {
                   onChange={(e) => setWindowMs(Number(e.target.value))}
                   style={{ ...styles.input, width: 90 }}
                 />
-                <span style={{ fontSize: 13, color: '#888' }}>毫秒</span>
+                <span style={{ fontSize: 13, color: '#888' }}>{t(lang, 'unitMs')}</span>
               </div>
             </Field>
-            <Field label="最大条数">
+            <Field label={t(lang, 'fieldMaxEvents')}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <input
                   type="number"
@@ -424,19 +432,15 @@ export default function SettingsPage() {
                   onChange={(e) => setWindowLimit(Number(e.target.value))}
                   style={{ ...styles.input, width: 60 }}
                 />
-                <span style={{ fontSize: 13, color: '#888' }}>条</span>
+                <span style={{ fontSize: 13, color: '#888' }}>{t(lang, 'unitEvents')}</span>
               </div>
             </Field>
-            <p style={styles.hint}>
-              滑动窗口限速：时间窗口内最多处理指定条数（默认 60s / 5条）。<br />
-              插件端与客户端同步使用相同策略。
-            </p>
+            <p style={styles.hint}>{t(lang, 'throttleHint')}</p>
           </Section>
 
-          <Section title="系统提示词">
+          <Section title={t(lang, 'sectionSystemPrompt')}>
             <p style={styles.hint}>
-              支持占位符：<code style={styles.code}>{'{persona}'}</code>（角色人设）、
-              <code style={styles.code}>{'{emotions}'}</code>（可用表情列表）
+              {t(lang, 'systemPromptHint')}
             </p>
             <textarea
               value={systemPromptTemplate}
@@ -448,7 +452,7 @@ export default function SettingsPage() {
               onClick={() => setSystemPromptTemplate(DEFAULT_TEMPLATE)}
               style={{ ...styles.secondaryButton, marginTop: 6 }}
             >
-              恢复默认
+              {t(lang, 'btnResetDefault')}
             </button>
           </Section>
         </>
@@ -457,7 +461,7 @@ export default function SettingsPage() {
       {/* 保存按钮 */}
       <div style={{ padding: '0 20px 20px', textAlign: 'right' as const }}>
         <button onClick={handleSave} style={styles.saveButton}>
-          {saved ? '✓ 已保存' : '保存'}
+          {saved ? t(lang, 'btnSaved') : t(lang, 'btnSave')}
         </button>
       </div>
     </div>

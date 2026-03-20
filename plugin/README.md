@@ -7,7 +7,7 @@
 在 Claude Code 中依次执行：
 
 ```
-/plugin marketplace add hyposomnia/aibaji_on_desktop
+/plugins marketplace add hyposomnia/aibaji_on_desktop
 /plugins add aibaji@aibaji_on_desktop
 ```
 

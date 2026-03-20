@@ -1,134 +1,179 @@
 # 爱巴基桌面版
 
+让 Claude Code 拥有一个透明悬浮的二次元角色伴侣。Claude Code 工作时，角色会根据当前状态说话、切换表情、播放动画，可选 TTS 朗读台词。
+
 [English](README.md)
 
-### 项目介绍
+---
 
-爱巴基桌面版是一个 Electron 桌面伴侣应用，配合 Claude Code Hook 插件使用。当 Claude Code 工作时（执行工具、完成任务、发送通知等），Hook 插件将事件发送给本地桌面应用，应用通过 LLM 将事件转述为角色台词，并播放对应表情的透明视频，可选开启 TTS 朗读。
-
-**工作流程：**
+## 工作原理
 
 ```
-Claude Code 工作事件
-  → Hook 插件 (forward.sh) POST 到 localhost:5287
-  → Electron 主进程接收事件
-  → LLM 解析事件，输出 [表情] + 台词
-  → 播放对应表情的透明角色视频
+Claude Code 触发 Hook 事件
+  → 插件 forward.sh 异步 POST 到 localhost:5287
+  → 桌面应用接收事件
+  → 调用 LLM 生成 [表情] + 台词
+  → 播放对应表情的透明 webm 视频
   → （可选）MiniMax TTS 朗读台词
 ```
 
-### 目录结构
+---
 
-```
-aibaji_on_desktop/
-├── desktop/          # Electron 应用主体
-│   ├── src/
-│   │   ├── main/     # 主进程（server、llm、tts、window 等）
-│   │   ├── preload/  # IPC 桥接
-│   │   └── renderer/ # 渲染进程（视频播放 + 设置页）
-│   └── resources/    # 应用图标
-├── plugin/           # Claude Code Hook 插件
-│   └── hooks/
-│       └── forward.sh  # 事件转发脚本
-└── characters/       # 角色视频素材
-    └── 角色名/
-        └── 服装名/
-            └── 表情名[数字].webm
-```
+## 插件说明
 
-### 安装使用
+`plugin/` 目录是一个 Claude Code Hook 插件，安装后会在以下六类事件触发时自动将事件转发到本地桌面应用：
 
-#### 1. 安装桌面应用
+| 事件 | 触发时机 | 转发内容 |
+|------|----------|----------|
+| `UserPromptSubmit` | 用户发送消息时 | 用户原文（代码块替换为占位符） |
+| `PreToolUse` | 工具调用前 | 工具名称 |
+| `PostToolUse` | 工具调用后 | 工具名称 |
+| `Stop` | 回复结束时 | 固定映射为"任务已完成" |
+| `Notification` | Claude Code 发出通知时 | 通知文本；权限/授权类自动标注为"需要用户操作" |
+| `PermissionRequest` | 请求工具权限时 | 固定映射为"需要用户授权：{工具名}" |
 
-从 [Releases](../../releases) 下载最新的 `.dmg` 文件（macOS），安装后启动应用。
+插件只转发语义摘要，不会转发工具参数、执行结果、代码 diff 等大体积内容。内置限速：60 秒滑动窗口内最多转发 5 次。始终 `exit 0`，不阻塞 Claude Code。
+
+---
+
+## 安装
+
+### 第一步：安装桌面应用
+
+从 [Releases](../../releases) 下载最新的 `.dmg`，安装并启动。
 
 或从源码构建：
 
 ```bash
 cd desktop
 npm install
-npm run pack   # 生成 dist/爱巴基桌面版-*.dmg
+npm run pack   # 输出 desktop/dist/爱巴基桌面版-*.dmg
 ```
 
-#### 2. 安装 Claude Code 插件
+### 第二步：安装 Claude Code 插件
 
-在 Claude Code 中执行：
+在 Claude Code 中依次执行：
 
 ```
 /plugin marketplace add hyposomnia/aibaji_on_desktop
-/plugins add aibaji@aibaji
+/plugins add aibaji@aibaji_on_desktop
 ```
 
-#### 3. 准备角色视频素材
+安装完成后无需重启，下一次工具调用即开始转发事件。
 
-角色视频放置在以下目录（应用启动后会自动识别）：
+---
 
-- **打包版**：与 `.app` 同级的 `characters/` 目录，或应用内置资源
-- **开发版**：仓库根目录的 `characters/` 目录
+## 准备角色视频资源
 
-目录结构示例：
+桌面应用需要一组带透明通道的 `.webm` 视频文件作为角色素材。
+
+### 目录结构
 
 ```
 characters/
-└── 昔涟/
-    └── 白色短裙/
+└── 角色名/
+    └── 服装名/
         ├── 平静1.1.webm
         ├── 平静1.2.webm
         ├── 微笑.webm
         ├── 开心.webm
         ├── 惊讶.webm
-        └── 愤怒.webm
+        └── 生气.webm
 ```
 
-视频文件需为带透明通道的 `.webm` 格式（VP9 编码）。
+### 文件要求
 
-#### 4. 配置应用
+- 格式：`.webm`，VP9 编码，**必须带 Alpha 通道**（透明背景）
+- 文件名即表情名，末尾数字为同表情多版本编号（播放时随机选取）
+  - 例：`平静1.1.webm`、`平静1.2.webm` → 表情名均为 `平静1`
+- 表情名以 `平静` 开头的视频归入空闲动画池（calm pool），其余归入 other pool，空闲时各以 50% 概率随机播放
 
-首次启动后，点击系统托盘图标，选择「设置」，配置以下内容：
+### 资源路径
 
-**角色设置**
-- 选择角色与服装
-- 设置 dataPath（角色视频根目录，默认为应用内置路径）
+首次启动桌面应用时会弹出文件夹选择窗口，选择包含角色子目录的 `characters/` 根目录即可。之后可在设置页 → 角色选项卡中修改。
 
-**LLM 设置**（必须）
+---
 
-| 选项 | 说明 |
-|------|------|
-| API 模式 | `openai`（兼容 OpenAI 接口）或 `anthropic` |
-| API Key | 对应平台的 API 密钥 |
-| Base URL | OpenAI 模式下的自定义接口地址（可使用中转） |
-| 模型 | 如 `gpt-4o-mini`、`claude-haiku-4-5-20251001` |
-| 角色 Persona | LLM 扮演角色时的人设描述 |
+## 配置参数
 
-**TTS 设置**（可选）
-
-| 选项 | 说明 |
-|------|------|
-| 启用 TTS | 是否朗读台词 |
-| Provider | 目前支持 MiniMax |
-| API Key | MiniMax 平台 API 密钥 |
-| 模型 | 如 `speech-01` |
-| Voice ID | MiniMax 音色 ID |
-
-**窗口设置**
-- 大小缩放、透明度调节
-- 锁定/解锁（锁定后鼠标可穿透窗口）
+首次启动后点击系统托盘图标，进入「设置」页面完成以下配置。
 
 配置文件保存于：`~/Library/Application Support/aibaji-desktop/config.json`
 
-### 开发
+### LLM 配置（必填）
+
+角色台词由 LLM 实时生成，必须配置一个可用的 LLM。
+
+| 参数 | 说明 |
+|------|------|
+| API 模式 | `openai`（兼容 OpenAI 格式，支持代理/国产模型）或 `anthropic` |
+| API Key | 对应平台的 API Key |
+| Base URL | 仅 `openai` 模式需要，填写 API 端点地址；留空则使用官方地址 |
+| 模型 | 例：`gpt-4o-mini`、`claude-haiku-4-5-20251001` |
+| 角色人设 | 传给 LLM 的角色描述，例：`傲娇的猫娘` |
+
+> LLM 的回复格式要求为 `[表情名]台词内容`，应用会自动解析并匹配视频。可用表情由当前角色的视频文件名自动提取。
+
+### TTS 配置（可选）
+
+启用后会将 LLM 生成的台词通过语音播放出来。
+
+| 参数 | 说明 |
+|------|------|
+| 启用 TTS | 开关 |
+| 服务商 | 目前仅支持 MiniMax |
+| API Key | MiniMax 平台 API Key |
+| 模型 | 例：`speech-01` |
+| Voice ID | MiniMax 音色 ID |
+
+### 窗口配置
+
+| 参数 | 说明 |
+|------|------|
+| 缩放比例 | 调整角色窗口大小 |
+| 透明度 | 调整窗口整体透明度 |
+| 锁定 | 锁定后鼠标点击穿透窗口，适合专注工作时使用 |
+
+### 服务端配置（高级）
+
+| 参数 | 默认值 | 说明 |
+|------|--------|------|
+| 端口 | `5287` | 本地 HTTP 服务端口，需与插件配置一致 |
+| Token | 空 | 启用后插件须携带相同 Token，否则请求被拒绝 |
+| 限速窗口 | `60000` ms | 客户端限速时间窗口 |
+| 窗口内上限 | `5` | 时间窗口内最多处理的事件数 |
+
+---
+
+## 插件配置（可选）
+
+插件目录下的 `plugin/config.json` 可覆盖默认转发行为：
+
+```json
+{
+  "server_url": "http://localhost:5287",
+  "token": "",
+  "events": ["PreToolUse", "PostToolUse", "Stop", "Notification", "UserPromptSubmit", "PermissionRequest"],
+  "include_content": false
+}
+```
+
+| 参数 | 默认值 | 说明 |
+|------|--------|------|
+| `server_url` | `http://localhost:5287` | 桌面应用地址，远程部署时修改 |
+| `token` | 空 | 与桌面应用服务端 Token 保持一致 |
+| `events` | 全部六类 | 只转发列表中的事件类型 |
+| `include_content` | `false` | 预留字段 |
+
+---
+
+## 开发
 
 ```bash
 cd desktop
 npm install
 npm run dev        # 开发模式（热重载）
 npm run typecheck  # TypeScript 类型检查
-npm run build      # 构建生产版本
-npm run pack       # 打包 DMG
+npm run build      # 生产构建
+npm run pack       # 打包为 DMG
 ```
-
-### 视频命名规范
-
-- 文件名去掉扩展名、末尾数字后为表情名，如 `平静1.1.webm` → 表情 `平静1`
-- 表情名以 `平静` 开头的归入 idle calm 池，其余归入 idle other 池
-- idle 状态下两个池各 50% 概率随机播放

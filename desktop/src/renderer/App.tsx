@@ -1,12 +1,17 @@
 import { useState, useEffect } from 'react'
 import VideoPlayer from './VideoPlayer'
 import SettingsPage from './SettingsPage'
+import { t, type Lang } from './i18n'
 
 export default function App() {
   const [showSetup, setShowSetup] = useState(false)
+  const [lang, setLang] = useState<Lang>('zh-CN')
 
   useEffect(() => {
     window.electronAPI?.onNeedSetup(() => setShowSetup(true))
+    window.electronAPI?.getConfig().then((cfg: { language?: Lang }) => {
+      if (cfg.language) setLang(cfg.language)
+    })
   }, [])
 
   if (window.location.hash === '#settings') {
@@ -16,12 +21,12 @@ export default function App() {
   return (
     <>
       <VideoPlayer />
-      {showSetup && <SetupModal onComplete={() => setShowSetup(false)} />}
+      {showSetup && <SetupModal lang={lang} onComplete={() => setShowSetup(false)} />}
     </>
   )
 }
 
-function SetupModal({ onComplete }: { onComplete: () => void }) {
+function SetupModal({ lang, onComplete }: { lang: Lang; onComplete: () => void }) {
   const [selecting, setSelecting] = useState(false)
   const [error, setError] = useState('')
 
@@ -40,7 +45,7 @@ function SetupModal({ onComplete }: { onComplete: () => void }) {
       window.electronAPI.sendSetupComplete()
       onComplete()
     } catch (e) {
-      setError('选择失败，请重试')
+      setError(t(lang, 'setupError'))
       setSelecting(false)
     }
   }
@@ -72,11 +77,10 @@ function SetupModal({ onComplete }: { onComplete: () => void }) {
       >
         <div style={{ fontSize: 40, marginBottom: 14, lineHeight: 1 }}>🎭</div>
         <h2 style={{ margin: '0 0 10px', fontSize: 17, fontWeight: 600 }}>
-          欢迎使用爱巴基
+          {t(lang, 'setupTitle')}
         </h2>
-        <p style={{ margin: '0 0 24px', color: '#999', fontSize: 13, lineHeight: 1.7 }}>
-          请选择角色视频素材所在的文件夹<br />
-          （包含角色子目录的 characters/ 目录）
+        <p style={{ margin: '0 0 24px', color: '#999', fontSize: 13, lineHeight: 1.7, whiteSpace: 'pre-line' }}>
+          {t(lang, 'setupDesc')}
         </p>
         {error && (
           <p style={{ margin: '0 0 12px', color: '#ff6b6b', fontSize: 12 }}>{error}</p>
@@ -96,7 +100,7 @@ function SetupModal({ onComplete }: { onComplete: () => void }) {
             transition: 'background 0.2s',
           }}
         >
-          {selecting ? '选择中...' : '选择文件夹'}
+          {selecting ? t(lang, 'setupSelecting') : t(lang, 'setupSelect')}
         </button>
       </div>
     </div>
