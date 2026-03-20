@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # 爱巴基桌面版 - Hook 转发脚本
-# 将 Claude Code 工作事件异步发送到本地 Electron 应用
+# 将 Claude Code 工作事件语义化后异步发送到本地 Electron 应用
 
 set -euo pipefail
 
@@ -19,7 +19,6 @@ LOCK_ATTEMPTS=0
 until mkdir "$LOCK_DIR" 2>/dev/null; do
   LOCK_ATTEMPTS=$((LOCK_ATTEMPTS + 1))
   if [ "$LOCK_ATTEMPTS" -ge 20 ]; then
-    # 超时则强制删除旧锁继续
     rmdir "$LOCK_DIR" 2>/dev/null || true
   fi
   sleep 0.05
@@ -28,7 +27,6 @@ trap 'rmdir "$LOCK_DIR" 2>/dev/null || true' EXIT
 
 NOW=$(date +%s)
 CUTOFF=$((NOW - WINDOW_SECONDS))
-# 过滤窗口内的时间戳并计数
 if [ -f "$RATE_LOG" ]; then
   RECENT=$(awk -v cutoff="$CUTOFF" '$1 > cutoff {print}' "$RATE_LOG")
 else
@@ -39,7 +37,6 @@ if [ -n "$RECENT" ]; then
   COUNT=$(echo "$RECENT" | wc -l | tr -d ' ')
 fi
 if [ "$COUNT" -lt "$WINDOW_LIMIT" ]; then
-  # 写回过滤后的记录 + 新时间戳
   { [ -n "$RECENT" ] && echo "$RECENT"; echo "$NOW"; } > "$RATE_LOG"
   SHOULD_SEND=1
 fi
@@ -55,7 +52,7 @@ fi
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONFIG_FILE="${SCRIPT_DIR}/../config.json"
 
-# 读取配置（优先 config.json，fallback 到环境变量）
+# 读取服务器配置
 if command -v jq &>/dev/null && [ -f "$CONFIG_FILE" ]; then
   SERVER_URL=$(jq -r '.server_url // "http://localhost:5287"' "$CONFIG_FILE")
   TOKEN=$(jq -r '.token // ""' "$CONFIG_FILE")
@@ -64,11 +61,88 @@ else
   TOKEN="${AIBAJI_TOKEN:-}"
 fi
 
-# 精简事件数据：剥掉可能含大量代码/diff 的字段，只保留语义关键信息
-if command -v jq &>/dev/null; then
-  SEND_DATA=$(echo "$EVENT_DATA" | jq 'del(.tool_input, .tool_response, .last_assistant_message)')
+# 提取事件类型
+EVENT_NAME=$(echo "$EVENT_DATA" | jq -r '.hook_event_name // "unknown"' 2>/dev/null || echo "unknown")
+
+# 检查事件是否在允许列表中（需要 jq）
+if command -v jq &>/dev/null && [ -f "$CONFIG_FILE" ]; then
+  ALLOWED=$(jq -r --arg e "$EVENT_NAME" '(.events // []) | map(select(. == $e)) | length' "$CONFIG_FILE")
+  if [ "$ALLOWED" -eq 0 ]; then
+    exit 0
+  fi
+fi
+
+# 读取消息模板（有 jq + config 则用配置，否则用内置默认值）
+if command -v jq &>/dev/null && [ -f "$CONFIG_FILE" ]; then
+  TPL_PRE=$(jq -r '.messages.PreToolUse        // "Prepare to use {tool}"'                          "$CONFIG_FILE")
+  TPL_POST=$(jq -r '.messages.PostToolUse       // "{tool} finished"'                               "$CONFIG_FILE")
+  TPL_STOP=$(jq -r '.messages.Stop              // "Task complete"'                                 "$CONFIG_FILE")
+  TPL_NOTIF=$(jq -r '.messages.Notification     // "{msg}"'                                         "$CONFIG_FILE")
+  TPL_NOTIF_PERM=$(jq -r '.messages.NotificationPermission // "Need your confirmation to {msg}"'   "$CONFIG_FILE")
+  TPL_PERM=$(jq -r '.messages.PermissionRequest // "Need your authentication to use {tool} ({msg})"' "$CONFIG_FILE")
+  TPL_USER=$(jq -r '.messages.UserPromptSubmit  // "Your instruction has been received."'           "$CONFIG_FILE")
+  PERM_KEYWORDS=$(jq -r '(.notification_permission_keywords // ["permission","allow","deny","approv","confirm","authoriz"]) | join("|")' "$CONFIG_FILE")
 else
-  SEND_DATA="$EVENT_DATA"
+  TPL_PRE="Prepare to use {tool}"
+  TPL_POST="{tool} finished"
+  TPL_STOP="Task complete"
+  TPL_NOTIF="{msg}"
+  TPL_NOTIF_PERM="Need your confirmation to {msg}"
+  TPL_PERM="Need your authentication to use {tool} ({msg})"
+  TPL_USER="Your instruction has been received."
+  PERM_KEYWORDS="permission|allow|deny|approv|confirm|authoriz"
+fi
+
+# 按事件类型做语义映射，产出 MESSAGE
+case "$EVENT_NAME" in
+  PreToolUse)
+    TOOL=$(echo "$EVENT_DATA" | jq -r '.tool_name // ""')
+    MESSAGE="${TPL_PRE//\{tool\}/$TOOL}"
+    ;;
+
+  PostToolUse)
+    TOOL=$(echo "$EVENT_DATA" | jq -r '.tool_name // ""')
+    MESSAGE="${TPL_POST//\{tool\}/$TOOL}"
+    ;;
+
+  Stop)
+    MESSAGE="$TPL_STOP"
+    ;;
+
+  Notification)
+    MSG=$(echo "$EVENT_DATA" | jq -r '.message // ""')
+    NOTIF_TYPE=$(echo "$EVENT_DATA" | jq -r '.notification_type // ""')
+    COMBINED=$(printf '%s %s' "$NOTIF_TYPE" "$MSG" | tr '[:upper:]' '[:lower:]')
+    if echo "$COMBINED" | grep -qE "$PERM_KEYWORDS"; then
+      MESSAGE="${TPL_NOTIF_PERM//\{msg\}/$MSG}"
+    else
+      MESSAGE="${TPL_NOTIF//\{msg\}/$MSG}"
+    fi
+    ;;
+
+  PermissionRequest)
+    TOOL=$(echo "$EVENT_DATA" | jq -r '.tool_name // .tool // ""')
+    MSG=$(echo "$EVENT_DATA" | jq -r '.message // ""')
+    MESSAGE="${TPL_PERM//\{tool\}/$TOOL}"
+    MESSAGE="${MESSAGE//\{msg\}/$MSG}"
+    ;;
+
+  UserPromptSubmit)
+    MESSAGE="$TPL_USER"
+    ;;
+
+  *)
+    exit 0
+    ;;
+esac
+
+# 构建精简 JSON payload：只含事件类型和已映射的消息
+if command -v jq &>/dev/null; then
+  SEND_DATA=$(jq -n --arg event "$EVENT_NAME" --arg message "$MESSAGE" \
+    '{event: $event, message: $message}')
+else
+  # jq 不可用时回退到手动拼接（消息中不含引号/特殊字符时安全）
+  SEND_DATA="{\"event\":\"${EVENT_NAME}\",\"message\":\"${MESSAGE}\"}"
 fi
 
 # 构建 curl 参数
@@ -81,7 +155,6 @@ CURL_ARGS=(
   -d "$SEND_DATA"
 )
 
-# 添加可选的 Bearer Token 认证
 if [ -n "$TOKEN" ]; then
   CURL_ARGS+=(-H "Authorization: Bearer ${TOKEN}")
 fi

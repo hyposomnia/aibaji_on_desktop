@@ -18,54 +18,11 @@ function buildSystemPrompt(persona: string, emotions: string[], template?: strin
 }
 
 /**
- * 格式化事件数据为用户消息
- *
- * 映射规则：
- * - UserPromptSubmit：直接转发用户文字，剥掉代码块
- * - PreToolUse / PostToolUse：只说工具名，不转发参数/结果
- * - Stop：统一映射为"任务已完成"
- * - Notification / PermissionRequest：识别需要用户操作的场景，明确标注
+ * 从插件已映射的 message 字段中提取消息。
+ * 插件端负责全部语义映射，桌面端直接使用结果。
  */
 function formatEventMessage(eventData: Record<string, unknown>): string {
-  const eventName = (eventData.hook_event_name as string) || 'unknown'
-  const toolName = (eventData.tool_name as string) || ''
-
-  switch (eventName) {
-    case 'UserPromptSubmit': {
-      const prompt = (eventData.prompt as string) || ''
-      // 剥掉代码块，保留用户的文字描述
-      const clean = prompt.replace(/```[\s\S]*?```/g, '[代码]').trim()
-      return clean || '收到主人的新指令'
-    }
-
-    case 'PreToolUse':
-      return toolName ? `正在使用工具：${toolName}` : '即将执行操作'
-
-    case 'PostToolUse':
-      return toolName ? `${toolName} 使用完毕` : '操作已完成'
-
-    case 'Stop':
-      return '任务已完成'
-
-    case 'Notification': {
-      const msg = (eventData.message as string) || ''
-      const notifType = (eventData.notification_type as string) || ''
-      const combined = `${notifType} ${msg}`.toLowerCase()
-      if (/permission|allow|deny|approv|confirm|authoriz|需要|授权|批准|选择/.test(combined)) {
-        return `需要用户操作：${msg || '请查看 Claude Code'}`
-      }
-      return msg || '有新通知'
-    }
-
-    case 'PermissionRequest': {
-      const msg = (eventData.message as string) || ''
-      const tool = toolName || (eventData.tool as string) || ''
-      return `需要用户授权${tool ? `：${tool}` : ''}${msg ? `（${msg}）` : ''}`
-    }
-
-    default:
-      return `事件：${eventName}`
-  }
+  return (eventData.message as string) || `event: ${eventData.event || eventData.hook_event_name || 'unknown'}`
 }
 
 /**

@@ -1,6 +1,16 @@
 {
   "server_url": "http://localhost:5287",
   "token": "",
-  "events": ["PreToolUse", "PostToolUse", "Stop", "Notification", "UserPromptSubmit"],
-  "include_content": false
+  "events": ["PreToolUse", "PostToolUse", "Stop", "Notification", "UserPromptSubmit", "PermissionRequest"],
+  "include_content": false,
+  "messages": {
+    "PreToolUse": "Prepare to use {tool}",
+    "PostToolUse": "{tool} finished",
+    "Stop": "Task complete",
+    "Notification": "{msg}",
+    "NotificationPermission": "Need your confirmation to {msg}",
+    "PermissionRequest": "Need your authentication to use {tool} ({msg})",
+    "UserPromptSubmit": "Your instruction has been received."
+  },
+  "notification_permission_keywords": ["permission", "allow", "deny", "approv", "confirm", "authoriz"]
 }
