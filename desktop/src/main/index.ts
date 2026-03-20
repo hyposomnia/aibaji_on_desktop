@@ -95,7 +95,7 @@ async function bootstrap(): Promise<void> {
     const { name: char, outfit, dataPath: dp } = currentConfig.character
     const emotions = getEmotions(dp, char, outfit)
     const { profile, persona } = resolveCharacterLLM(char)
-    console.log(`[aibaji] event received: ${eventData.hook_event_name}, char=${char}, emotions=${emotions.length}, profile=${profile?.name ?? 'none(fallback)'}`)
+    console.log(`[aibaji] event received: ${eventData.event ?? eventData.hook_event_name}, message="${eventData.message}", char=${char}, emotions=${emotions.length}, profile=${profile?.name ?? 'none(fallback)'}`)
     await processEvent(
       eventData,
       emotions,
