@@ -7,31 +7,46 @@ set -euo pipefail
 # 读取事件数据（从 stdin）
 EVENT_DATA=$(cat)
 
-# 插件端限速：60 秒滑动窗口内最多发送 5 次（flock 保证并发安全）
+# 插件端限速：60 秒滑动窗口内最多发送 5 次（mkdir 原子锁，兼容 macOS/Linux）
 RATE_LOG="/tmp/aibaji_send_log"
+LOCK_DIR="/tmp/aibaji_send_log.lock"
 WINDOW_SECONDS=60
 WINDOW_LIMIT=5
 SHOULD_SEND=0
-{
-  flock 9
-  NOW=$(date +%s)
-  CUTOFF=$((NOW - WINDOW_SECONDS))
-  # 过滤窗口内的时间戳并计数
-  if [ -f "$RATE_LOG" ]; then
-    RECENT=$(awk -v cutoff="$CUTOFF" '$1 > cutoff {print}' "$RATE_LOG")
-  else
-    RECENT=""
+
+# 获取锁（自旋等待，最多 1 秒）
+LOCK_ATTEMPTS=0
+until mkdir "$LOCK_DIR" 2>/dev/null; do
+  LOCK_ATTEMPTS=$((LOCK_ATTEMPTS + 1))
+  if [ "$LOCK_ATTEMPTS" -ge 20 ]; then
+    # 超时则强制删除旧锁继续
+    rmdir "$LOCK_DIR" 2>/dev/null || true
   fi
-  COUNT=0
-  if [ -n "$RECENT" ]; then
-    COUNT=$(echo "$RECENT" | wc -l | tr -d ' ')
-  fi
-  if [ "$COUNT" -lt "$WINDOW_LIMIT" ]; then
-    # 写回过滤后的记录 + 新时间戳
-    { [ -n "$RECENT" ] && echo "$RECENT"; echo "$NOW"; } > "$RATE_LOG"
-    SHOULD_SEND=1
-  fi
-} 9>"${RATE_LOG}.lock"
+  sleep 0.05
+done
+trap 'rmdir "$LOCK_DIR" 2>/dev/null || true' EXIT
+
+NOW=$(date +%s)
+CUTOFF=$((NOW - WINDOW_SECONDS))
+# 过滤窗口内的时间戳并计数
+if [ -f "$RATE_LOG" ]; then
+  RECENT=$(awk -v cutoff="$CUTOFF" '$1 > cutoff {print}' "$RATE_LOG")
+else
+  RECENT=""
+fi
+COUNT=0
+if [ -n "$RECENT" ]; then
+  COUNT=$(echo "$RECENT" | wc -l | tr -d ' ')
+fi
+if [ "$COUNT" -lt "$WINDOW_LIMIT" ]; then
+  # 写回过滤后的记录 + 新时间戳
+  { [ -n "$RECENT" ] && echo "$RECENT"; echo "$NOW"; } > "$RATE_LOG"
+  SHOULD_SEND=1
+fi
+
+rmdir "$LOCK_DIR" 2>/dev/null || true
+trap - EXIT
+
 if [ "$SHOULD_SEND" -eq 0 ]; then
   exit 0
 fi
