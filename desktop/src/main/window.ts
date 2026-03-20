@@ -34,6 +34,10 @@ export function createWindow(): BrowserWindow {
 
   // 始终置顶
   mainWindow.setAlwaysOnTop(true, 'screen-saver')
+  // setAlwaysOnTop 可能导致 macOS 重新约束窗口坐标，恢复预期位置
+  if (x !== undefined && y !== undefined) {
+    mainWindow.setPosition(x, y)
+  }
 
   // dev 模式：Cmd+Shift+I 打开 DevTools
   if (process.env.ELECTRON_RENDERER_URL) {
