@@ -39,6 +39,7 @@ const translations = {
     sectionLanguage: 'Language',
 
     sectionLLM: 'LLM Models',
+    fieldName: 'Name',
     modelNamePlaceholder: 'Model name',
     btnDelete: 'Delete',
     fieldAPIType: 'API Type',
@@ -107,6 +108,7 @@ const translations = {
     sectionLanguage: '语言',
 
     sectionLLM: 'LLM 模型',
+    fieldName: '名称',
     modelNamePlaceholder: '模型名称',
     btnDelete: '删除',
     fieldAPIType: 'API 类型',
@@ -175,6 +177,7 @@ const translations = {
     sectionLanguage: '語言',
 
     sectionLLM: 'LLM 模型',
+    fieldName: '名稱',
     modelNamePlaceholder: '模型名稱',
     btnDelete: '刪除',
     fieldAPIType: 'API 類型',
@@ -243,6 +246,7 @@ const translations = {
     sectionLanguage: '言語',
 
     sectionLLM: 'LLM モデル',
+    fieldName: '名前',
     modelNamePlaceholder: 'モデル名',
     btnDelete: '削除',
     fieldAPIType: 'API タイプ',

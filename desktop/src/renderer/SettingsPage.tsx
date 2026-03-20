@@ -47,6 +47,7 @@ export default function SettingsPage() {
   const [autostart, setAutostart] = useState(true)
 
   const [saved, setSaved] = useState(false)
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     document.body.style.webkitAppRegion = 'no-drag'
@@ -298,63 +299,100 @@ export default function SettingsPage() {
           </Section>
 
           <Section title={t(lang, 'sectionLLM')}>
-            {llmProfiles.map((p) => (
-              <div key={p.id} style={styles.card}>
-                <div style={styles.cardHeader}>
-                  <input
-                    value={p.name}
-                    onChange={(e) => updateLLMProfile(p.id, { name: e.target.value })}
-                    placeholder={t(lang, 'modelNamePlaceholder')}
-                    style={{ ...styles.input, flex: 1 }}
-                  />
-                  <button
-                    onClick={() => setLlmProfiles((prev) => prev.filter((x) => x.id !== p.id))}
-                    style={styles.deleteButton}
-                  >
-                    {t(lang, 'btnDelete')}
-                  </button>
+            {llmProfiles.map((p) => {
+              const expanded = expandedIds.has(p.id)
+              const toggle = () =>
+                setExpandedIds((prev) => {
+                  const next = new Set(prev)
+                  if (next.has(p.id)) next.delete(p.id)
+                  else next.add(p.id)
+                  return next
+                })
+              const saveCard = async () => {
+                const cfg = (await window.electronAPI.getConfig()) as Record<string, unknown>
+                await window.electronAPI.setConfig({ ...cfg, llmProfiles })
+                setExpandedIds((prev) => { const next = new Set(prev); next.delete(p.id); return next })
+              }
+              return (
+                <div key={p.id} style={styles.card}>
+                  <div style={{ ...styles.cardHeader, cursor: 'pointer', marginBottom: expanded ? 8 : 0 }} onClick={toggle}>
+                    <span style={{ fontSize: 13, color: '#444', userSelect: 'none' }}>
+                      {expanded ? '▾' : '▸'}
+                    </span>
+                    <span style={{ flex: 1, fontSize: 13, fontWeight: 500, color: '#1d1d1f', marginLeft: 6 }}>
+                      {p.name || t(lang, 'modelNamePlaceholder')}
+                    </span>
+                    {!expanded && (
+                      <span style={{ fontSize: 12, color: '#888' }}>{p.apiMode} / {p.model || '—'}</span>
+                    )}
+                  </div>
+                  {expanded && (
+                    <>
+                      <Field label={t(lang, 'fieldAPIType')}>
+                        <select
+                          value={p.apiMode}
+                          onChange={(e) => updateLLMProfile(p.id, { apiMode: e.target.value as 'openai' | 'anthropic' })}
+                          style={styles.select}
+                        >
+                          <option value="openai">{t(lang, 'apiOpenAI')}</option>
+                          <option value="anthropic">{t(lang, 'apiAnthropic')}</option>
+                        </select>
+                      </Field>
+                      <Field label={t(lang, 'fieldAPIKey')}>
+                        <input
+                          type="password"
+                          value={p.apiKey}
+                          onChange={(e) => updateLLMProfile(p.id, { apiKey: e.target.value })}
+                          placeholder="sk-..."
+                          style={styles.input}
+                        />
+                      </Field>
+                      <Field label={t(lang, 'fieldBaseURL')}>
+                        <input
+                          value={p.baseURL}
+                          onChange={(e) => updateLLMProfile(p.id, { baseURL: e.target.value })}
+                          placeholder={t(lang, 'baseURLPlaceholder')}
+                          style={styles.input}
+                        />
+                      </Field>
+                      <Field label={t(lang, 'fieldName')}>
+                        <input
+                          value={p.name}
+                          onChange={(e) => updateLLMProfile(p.id, { name: e.target.value })}
+                          placeholder={t(lang, 'modelNamePlaceholder')}
+                          style={styles.input}
+                        />
+                      </Field>
+                      <Field label={t(lang, 'fieldModel')}>
+                        <input
+                          value={p.model}
+                          onChange={(e) => updateLLMProfile(p.id, { model: e.target.value })}
+                          placeholder="gpt-4o-mini"
+                          style={styles.input}
+                        />
+                      </Field>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8 }}>
+                        <button
+                          onClick={() => setLlmProfiles((prev) => prev.filter((x) => x.id !== p.id))}
+                          style={styles.deleteButton}
+                        >
+                          {t(lang, 'btnDelete')}
+                        </button>
+                        <button onClick={saveCard} style={styles.saveButton}>
+                          {t(lang, 'btnSave')}
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </div>
-                <Field label={t(lang, 'fieldAPIType')}>
-                  <select
-                    value={p.apiMode}
-                    onChange={(e) =>
-                      updateLLMProfile(p.id, { apiMode: e.target.value as 'openai' | 'anthropic' })
-                    }
-                    style={styles.select}
-                  >
-                    <option value="openai">{t(lang, 'apiOpenAI')}</option>
-                    <option value="anthropic">{t(lang, 'apiAnthropic')}</option>
-                  </select>
-                </Field>
-                <Field label={t(lang, 'fieldAPIKey')}>
-                  <input
-                    type="password"
-                    value={p.apiKey}
-                    onChange={(e) => updateLLMProfile(p.id, { apiKey: e.target.value })}
-                    placeholder="sk-..."
-                    style={styles.input}
-                  />
-                </Field>
-                <Field label={t(lang, 'fieldBaseURL')}>
-                  <input
-                    value={p.baseURL}
-                    onChange={(e) => updateLLMProfile(p.id, { baseURL: e.target.value })}
-                    placeholder={t(lang, 'baseURLPlaceholder')}
-                    style={styles.input}
-                  />
-                </Field>
-                <Field label={t(lang, 'fieldModel')}>
-                  <input
-                    value={p.model}
-                    onChange={(e) => updateLLMProfile(p.id, { model: e.target.value })}
-                    placeholder="gpt-4o-mini"
-                    style={styles.input}
-                  />
-                </Field>
-              </div>
-            ))}
+              )
+            })}
             <button
-              onClick={() => setLlmProfiles((prev) => [...prev, newLLMProfile()])}
+              onClick={() => {
+                const p = newLLMProfile()
+                setLlmProfiles((prev) => [...prev, p])
+                setExpandedIds((prev) => new Set([...prev, p.id]))
+              }}
               style={styles.addButton}
             >
               {t(lang, 'btnAddLLM')}
@@ -362,56 +400,95 @@ export default function SettingsPage() {
           </Section>
 
           <Section title={t(lang, 'sectionTTS')}>
-            {ttsProfiles.map((p) => (
-              <div key={p.id} style={styles.card}>
-                <div style={styles.cardHeader}>
-                  <input
-                    value={p.name}
-                    onChange={(e) => updateTTSProfile(p.id, { name: e.target.value })}
-                    placeholder={t(lang, 'ttsNamePlaceholder')}
-                    style={{ ...styles.input, flex: 1 }}
-                  />
-                  <button
-                    onClick={() => setTtsProfiles((prev) => prev.filter((x) => x.id !== p.id))}
-                    style={styles.deleteButton}
-                  >
-                    {t(lang, 'btnDelete')}
-                  </button>
+            {ttsProfiles.map((p) => {
+              const expanded = expandedIds.has(p.id)
+              const toggle = () =>
+                setExpandedIds((prev) => {
+                  const next = new Set(prev)
+                  if (next.has(p.id)) next.delete(p.id)
+                  else next.add(p.id)
+                  return next
+                })
+              const saveCard = async () => {
+                const cfg = (await window.electronAPI.getConfig()) as Record<string, unknown>
+                await window.electronAPI.setConfig({ ...cfg, ttsProfiles })
+                setExpandedIds((prev) => { const next = new Set(prev); next.delete(p.id); return next })
+              }
+              return (
+                <div key={p.id} style={styles.card}>
+                  <div style={{ ...styles.cardHeader, cursor: 'pointer', marginBottom: expanded ? 8 : 0 }} onClick={toggle}>
+                    <span style={{ fontSize: 13, color: '#444', userSelect: 'none' }}>
+                      {expanded ? '▾' : '▸'}
+                    </span>
+                    <span style={{ flex: 1, fontSize: 13, fontWeight: 500, color: '#1d1d1f', marginLeft: 6 }}>
+                      {p.name || t(lang, 'ttsNamePlaceholder')}
+                    </span>
+                    {!expanded && (
+                      <span style={{ fontSize: 12, color: '#888' }}>{p.provider} / {p.model || '—'}</span>
+                    )}
+                  </div>
+                  {expanded && (
+                    <>
+                      <Field label={t(lang, 'fieldProvider')}>
+                        <select value={p.provider} style={styles.select} disabled>
+                          <option value="minimax">MiniMax</option>
+                        </select>
+                      </Field>
+                      <Field label={t(lang, 'fieldAPIKey')}>
+                        <input
+                          type="password"
+                          value={p.apiKey}
+                          onChange={(e) => updateTTSProfile(p.id, { apiKey: e.target.value })}
+                          placeholder="MiniMax API Key"
+                          style={styles.input}
+                        />
+                      </Field>
+                      <Field label={t(lang, 'fieldName')}>
+                        <input
+                          value={p.name}
+                          onChange={(e) => updateTTSProfile(p.id, { name: e.target.value })}
+                          placeholder={t(lang, 'ttsNamePlaceholder')}
+                          style={styles.input}
+                        />
+                      </Field>
+                      <Field label={t(lang, 'fieldModel')}>
+                        <input
+                          value={p.model}
+                          onChange={(e) => updateTTSProfile(p.id, { model: e.target.value })}
+                          placeholder="speech-01"
+                          style={styles.input}
+                        />
+                      </Field>
+                      <Field label="Voice ID">
+                        <input
+                          value={p.voiceId}
+                          onChange={(e) => updateTTSProfile(p.id, { voiceId: e.target.value })}
+                          placeholder="female-tianmei"
+                          style={styles.input}
+                        />
+                      </Field>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8 }}>
+                        <button
+                          onClick={() => setTtsProfiles((prev) => prev.filter((x) => x.id !== p.id))}
+                          style={styles.deleteButton}
+                        >
+                          {t(lang, 'btnDelete')}
+                        </button>
+                        <button onClick={saveCard} style={styles.saveButton}>
+                          {t(lang, 'btnSave')}
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </div>
-                <Field label={t(lang, 'fieldProvider')}>
-                  <select value={p.provider} style={styles.select} disabled>
-                    <option value="minimax">MiniMax</option>
-                  </select>
-                </Field>
-                <Field label={t(lang, 'fieldAPIKey')}>
-                  <input
-                    type="password"
-                    value={p.apiKey}
-                    onChange={(e) => updateTTSProfile(p.id, { apiKey: e.target.value })}
-                    placeholder="MiniMax API Key"
-                    style={styles.input}
-                  />
-                </Field>
-                <Field label={t(lang, 'fieldModel')}>
-                  <input
-                    value={p.model}
-                    onChange={(e) => updateTTSProfile(p.id, { model: e.target.value })}
-                    placeholder="speech-01"
-                    style={styles.input}
-                  />
-                </Field>
-                <Field label="Voice ID">
-                  <input
-                    value={p.voiceId}
-                    onChange={(e) => updateTTSProfile(p.id, { voiceId: e.target.value })}
-                    placeholder="female-tianmei"
-                    style={styles.input}
-                  />
-                </Field>
-              </div>
-            ))}
+              )
+            })}
             <button
-              onClick={() => setTtsProfiles((prev) => [...prev, newTTSProfile()])}
+              onClick={() => {
+                const p = newTTSProfile()
+                setTtsProfiles((prev) => [...prev, p])
+                setExpandedIds((prev) => new Set([...prev, p.id]))
+              }}
               style={styles.addButton}
             >
               {t(lang, 'btnAddTTS')}
