@@ -98,7 +98,26 @@ export function updateScale(scale: number): void {
 /**
  * 注册窗口相关 IPC handlers
  */
+/**
+ * 将窗口移动到当前光标所在屏幕的正中间
+ */
+export function centerWindowOnCurrentDisplay(): void {
+  if (!mainWindow) return
+  const cursor = electronScreen.getCursorScreenPoint()
+  const display = electronScreen.getDisplayNearestPoint(cursor)
+  const { x: dx, y: dy, width: dw, height: dh } = display.workArea
+  const bounds = mainWindow.getBounds()
+  const cx = Math.round(dx + (dw - bounds.width) / 2)
+  const cy = Math.round(dy + (dh - bounds.height) / 2)
+  mainWindow.setPosition(cx, cy)
+  setConfig({ window: { ...getConfig().window, x: cx, y: cy } })
+}
+
 export function registerWindowHandlers(): void {
+  ipcMain.on('center-window', () => {
+    centerWindowOnCurrentDisplay()
+  })
+
   ipcMain.on('set-ignore-mouse-events', (_, ignore: boolean) => {
     if (mainWindow) {
       if (ignore) {

@@ -273,6 +273,18 @@ export default function SettingsPage() {
             </div>
           </Section>
 
+          <Section title={t(lang, 'sectionWindow')}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={styles.hint}>{t(lang, 'centerWindowHint')}</div>
+              <button
+                onClick={() => window.electronAPI.centerWindow()}
+                style={{ ...styles.secondaryButton, whiteSpace: 'nowrap', marginLeft: 12 }}
+              >
+                {t(lang, 'btnCenterWindow')}
+              </button>
+            </div>
+          </Section>
+
           <Section title={t(lang, 'sectionLanguage')}>
             <select
               value={lang}

@@ -22,6 +22,7 @@ declare global {
       quit: () => void
       getAutostart: () => Promise<boolean>
       setAutostart: (enabled: boolean) => Promise<void>
+      centerWindow: () => void
     }
   }
 }

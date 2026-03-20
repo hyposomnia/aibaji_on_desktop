@@ -33,6 +33,9 @@ const translations = {
     sectionStartup: 'Startup',
     autostartLabel: 'Launch at Login',
     autostartHint: 'Automatically start Aibaji after login',
+    sectionWindow: 'Window',
+    btnCenterWindow: 'Reset Window Position',
+    centerWindowHint: 'Move the character window to the center of the current screen',
     sectionLanguage: 'Language',
 
     sectionLLM: 'LLM Models',
@@ -98,6 +101,9 @@ const translations = {
     sectionStartup: '启动设置',
     autostartLabel: '开机自启动',
     autostartHint: '登录后自动启动爱巴基',
+    sectionWindow: '窗口',
+    btnCenterWindow: '重置窗口位置',
+    centerWindowHint: '将角色窗口移动到当前屏幕正中间',
     sectionLanguage: '语言',
 
     sectionLLM: 'LLM 模型',
@@ -163,6 +169,9 @@ const translations = {
     sectionStartup: '啟動設定',
     autostartLabel: '開機自動啟動',
     autostartHint: '登入後自動啟動愛巴基',
+    sectionWindow: '視窗',
+    btnCenterWindow: '重置視窗位置',
+    centerWindowHint: '將角色視窗移動到目前螢幕正中間',
     sectionLanguage: '語言',
 
     sectionLLM: 'LLM 模型',
@@ -228,6 +237,9 @@ const translations = {
     sectionStartup: '起動設定',
     autostartLabel: 'ログイン時に起動',
     autostartHint: 'ログイン後に自動的にアイバジを起動',
+    sectionWindow: 'ウィンドウ',
+    btnCenterWindow: 'ウィンドウ位置をリセット',
+    centerWindowHint: 'キャラクターウィンドウを現在の画面中央に移動',
     sectionLanguage: '言語',
 
     sectionLLM: 'LLM モデル',
