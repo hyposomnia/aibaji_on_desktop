@@ -46,7 +46,7 @@ export default function SettingsPage() {
   const [serverToken, setServerToken] = useState('')
   const [windowMs, setWindowMs] = useState(60000)
   const [windowLimit, setWindowLimit] = useState(5)
-  const [systemPromptTemplate, setSystemPromptTemplate] = useState(DEFAULT_TEMPLATE)
+  const [systemPromptTemplate, setSystemPromptTemplate] = useState(DEFAULT_SYSTEM_PROMPTS['zh-CN'])
   const [autostart, setAutostart] = useState(true)
 
   const [saved, setSaved] = useState(false)
