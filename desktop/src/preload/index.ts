@@ -46,6 +46,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   randomOutfit: () => ipcRenderer.send('random-outfit'),
   // 窗口居中
   centerWindow: () => ipcRenderer.send('center-window'),
+  // 窗口位置（自定义拖拽用）
+  getWindowPosition: (): Promise<{ x: number; y: number }> => ipcRenderer.invoke('get-window-position'),
+  setWindowPosition: (x: number, y: number) => ipcRenderer.send('set-window-position', x, y),
   // 退出
   quit: () => ipcRenderer.send('quit'),
   // 通知 main 进程渲染层已就绪（IPC 监听已注册）

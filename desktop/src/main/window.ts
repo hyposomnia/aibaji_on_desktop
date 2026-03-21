@@ -118,6 +118,16 @@ export function registerWindowHandlers(): void {
     centerWindowOnCurrentDisplay()
   })
 
+  ipcMain.handle('get-window-position', () => {
+    if (!mainWindow) return { x: 0, y: 0 }
+    const [x, y] = mainWindow.getPosition()
+    return { x, y }
+  })
+
+  ipcMain.on('set-window-position', (_, x: number, y: number) => {
+    if (mainWindow) mainWindow.setPosition(Math.round(x), Math.round(y))
+  })
+
   ipcMain.on('set-ignore-mouse-events', (_, ignore: boolean) => {
     if (mainWindow) {
       if (ignore) {
