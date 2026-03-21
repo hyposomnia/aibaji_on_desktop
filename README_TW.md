@@ -48,7 +48,7 @@ Claude Code 觸發 Hook 事件
 ```bash
 cd desktop
 npm install
-npm run pack   # 輸出 desktop/dist/愛巴基桌面版-*.dmg
+npm run pack   # 輸出 desktop/dist/aibaji_desktop-*.dmg
 ```
 
 ### 第二步：安裝 Claude Code 插件

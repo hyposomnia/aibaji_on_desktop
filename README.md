@@ -48,7 +48,7 @@ Or build from source:
 ```bash
 cd desktop
 npm install
-npm run pack   # outputs desktop/dist/Aibaji-*.dmg
+npm run pack   # outputs desktop/dist/aibaji_desktop-*.dmg
 ```
 
 ### Step 2: Install the Claude Code Plugin

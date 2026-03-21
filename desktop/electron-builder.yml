@@ -1,5 +1,5 @@
 appId: com.aibaji.desktop
-productName: 爱巴基桌面版
+productName: aibaji_desktop
 mac:
   target: dmg
   category: public.app-category.entertainment

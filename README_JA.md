@@ -48,7 +48,7 @@ Claude Code が Hook イベントを発火
 ```bash
 cd desktop
 npm install
-npm run pack   # desktop/dist/アイバジ-*.dmg を出力
+npm run pack   # desktop/dist/aibaji_desktop-*.dmg を出力
 ```
 
 ### ステップ 2：Claude Code プラグインをインストール
