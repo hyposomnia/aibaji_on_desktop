@@ -57,6 +57,11 @@ const translations = {
     fieldProvider: 'Provider',
     btnAddTTS: '+ Add TTS Model',
 
+    sectionServer: 'Server',
+    fieldToken: 'Token',
+    tokenPlaceholder: 'Leave empty to disable auth',
+    tokenHint: 'Plugin token must match. Leave empty to disable.',
+
     sectionThrottle: 'Event Throttle',
     fieldTimeWindow: 'Time Window',
     unitMs: 'ms',
@@ -126,6 +131,11 @@ const translations = {
     ttsNamePlaceholder: 'TTS 名称',
     fieldProvider: '供应商',
     btnAddTTS: '+ 添加 TTS 模型',
+
+    sectionServer: '服务端',
+    fieldToken: 'Token',
+    tokenPlaceholder: '留空不启用认证',
+    tokenHint: '插件 token 须与此保持一致，留空则不验证。',
 
     sectionThrottle: '事件节流',
     fieldTimeWindow: '时间窗口',
@@ -197,6 +207,11 @@ const translations = {
     fieldProvider: '供應商',
     btnAddTTS: '+ 新增 TTS 模型',
 
+    sectionServer: '伺服器',
+    fieldToken: 'Token',
+    tokenPlaceholder: '留空不啟用驗證',
+    tokenHint: '插件 token 須與此保持一致，留空則不驗證。',
+
     sectionThrottle: '事件節流',
     fieldTimeWindow: '時間視窗',
     unitMs: '毫秒',
@@ -266,6 +281,11 @@ const translations = {
     ttsNamePlaceholder: 'TTS 名',
     fieldProvider: 'プロバイダー',
     btnAddTTS: '+ TTS モデルを追加',
+
+    sectionServer: 'サーバー',
+    fieldToken: 'Token',
+    tokenPlaceholder: '空白で認証無効',
+    tokenHint: 'プラグインの token と一致させてください。空白で無効。',
 
     sectionThrottle: 'イベントスロットル',
     fieldTimeWindow: '時間ウィンドウ',

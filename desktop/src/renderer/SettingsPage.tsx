@@ -43,6 +43,7 @@ export default function SettingsPage() {
   const [outfitsMap, setOutfitsMap] = useState<Record<string, string[]>>({})
 
   // 系统设置 tab 状态
+  const [serverToken, setServerToken] = useState('')
   const [windowMs, setWindowMs] = useState(60000)
   const [windowLimit, setWindowLimit] = useState(5)
   const [systemPromptTemplate, setSystemPromptTemplate] = useState(DEFAULT_TEMPLATE)
@@ -61,6 +62,7 @@ export default function SettingsPage() {
       setDataPath((char.dataPath as string) || '')
 
       const srv = (c.server as Record<string, unknown>) || {}
+      setServerToken((srv.token as string) || '')
       setWindowMs(typeof srv.windowMs === 'number' ? srv.windowMs : 60000)
       setWindowLimit(typeof srv.windowLimit === 'number' ? srv.windowLimit : 5)
 
@@ -96,7 +98,7 @@ export default function SettingsPage() {
     const srv = (cfg.server as Record<string, unknown>) || {}
     const llm = (cfg.llm as Record<string, unknown>) || {}
     await window.electronAPI.setConfig({
-      server: { ...srv, windowMs, windowLimit },
+      server: { ...srv, token: serverToken, windowMs, windowLimit },
       llm: { ...llm, systemPromptTemplate },
       llmProfiles,
       ttsProfiles,
@@ -500,6 +502,19 @@ export default function SettingsPage() {
             >
               {t(lang, 'btnAddTTS')}
             </button>
+          </Section>
+
+          <Section title={t(lang, 'sectionServer')}>
+            <Field label={t(lang, 'fieldToken')}>
+              <input
+                type="password"
+                value={serverToken}
+                onChange={(e) => setServerToken(e.target.value)}
+                placeholder={t(lang, 'tokenPlaceholder')}
+                style={styles.input}
+              />
+            </Field>
+            <p style={styles.hint}>{t(lang, 'tokenHint')}</p>
           </Section>
 
           <Section title={t(lang, 'sectionThrottle')}>
