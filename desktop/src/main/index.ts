@@ -168,6 +168,20 @@ function registerAdditionalHandlers(): void {
     refreshTray()
   })
 
+  // 随机切换服装（双击角色触发）
+  ipcMain.on('random-outfit', () => {
+    const config = getConfig()
+    const { name: char, outfit: current, dataPath } = config.character
+    if (!char || !dataPath) return
+    const outfits = getOutfits(dataPath, char)
+    if (outfits.length <= 1) return
+    const others = outfits.filter((o) => o !== current)
+    const next = others[Math.floor(Math.random() * others.length)]
+    setConfig({ character: { ...config.character, outfit: next } })
+    setCharacterOutfit(char, next)
+    refreshTray()
+  })
+
   // 打开设置窗口
   ipcMain.on('open-settings', () => {
     openSettings()

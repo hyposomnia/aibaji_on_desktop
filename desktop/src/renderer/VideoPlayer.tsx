@@ -23,6 +23,7 @@ declare global {
       getAutostart: () => Promise<boolean>
       setAutostart: (enabled: boolean) => Promise<void>
       centerWindow: () => void
+      randomOutfit: () => void
     }
   }
 }
@@ -71,8 +72,20 @@ export default function VideoPlayer() {
       document.body.style.webkitAppRegion = locked ? 'no-drag' : 'drag'
     })
 
+    // 非锁定状态下双击角色随机换服装
+    const handleDblClick = () => {
+      if (!lockedRef.current) {
+        api.randomOutfit()
+      }
+    }
+    document.addEventListener('dblclick', handleDblClick)
+
     // 所有 IPC 监听已注册，通知 main 进程可以开始播放
     api.notifyReady()
+
+    return () => {
+      document.removeEventListener('dblclick', handleDblClick)
+    }
   }, [])
 
   const handleVideoEnded = () => {

@@ -42,6 +42,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // 开机自启动
   getAutostart: (): Promise<boolean> => ipcRenderer.invoke('get-autostart'),
   setAutostart: (enabled: boolean): Promise<void> => ipcRenderer.invoke('set-autostart', enabled),
+  // 随机切换服装
+  randomOutfit: () => ipcRenderer.send('random-outfit'),
   // 窗口居中
   centerWindow: () => ipcRenderer.send('center-window'),
   // 退出
