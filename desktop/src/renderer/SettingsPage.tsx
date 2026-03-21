@@ -284,7 +284,10 @@ export default function SettingsPage() {
             </div>
             <div style={styles.divider} />
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={styles.hint}>{t(lang, 'centerWindowHint')}</div>
+              <div>
+                <div style={{ fontSize: 13, color: '#1d1d1f' }}>{t(lang, 'sectionWindow')}</div>
+                <div style={styles.hint}>{t(lang, 'centerWindowHint')}</div>
+              </div>
               <button
                 onClick={() => window.electronAPI.centerWindow()}
                 style={{ ...styles.secondaryButton, whiteSpace: 'nowrap', marginLeft: 12 }}
