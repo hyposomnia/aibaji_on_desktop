@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { t, LANG_LABELS, type Lang } from './i18n'
+import { t, LANG_LABELS, DEFAULT_SYSTEM_PROMPTS, type Lang } from './i18n'
 
 interface LLMProfile {
   id: string
@@ -25,8 +25,10 @@ interface CharacterProfile {
   ttsProfileId: string
 }
 
-const DEFAULT_TEMPLATE =
-  '你是{persona}。收到 Claude Code 的工作状态通知后，用角色口吻简短回应主人（不超过50字）。\n必须在回复开头选择一个表情，格式：[表情名]台词内容\n可用表情（只能选其中一个）：{emotions}\n示例：[微笑]主人又在努力工作了呢～'
+// 判断提示词是否为某个语言的默认值（未经用户自定义）
+function isDefaultPrompt(tpl: string): boolean {
+  return Object.values(DEFAULT_SYSTEM_PROMPTS).includes(tpl as never)
+}
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<'character' | 'system'>('character')
@@ -63,7 +65,9 @@ export default function SettingsPage() {
       setWindowLimit(typeof srv.windowLimit === 'number' ? srv.windowLimit : 5)
 
       const llm = (c.llm as Record<string, unknown>) || {}
-      setSystemPromptTemplate((llm.systemPromptTemplate as string) || DEFAULT_TEMPLATE)
+      const lang = (c.language as Lang) || 'zh-CN'
+      const savedTpl = (llm.systemPromptTemplate as string) || ''
+      setSystemPromptTemplate(savedTpl || DEFAULT_SYSTEM_PROMPTS[lang])
 
       if (Array.isArray(c.llmProfiles)) setLlmProfiles(c.llmProfiles as LLMProfile[])
       if (Array.isArray(c.ttsProfiles)) setTtsProfiles(c.ttsProfiles as TTSProfile[])
@@ -114,6 +118,10 @@ export default function SettingsPage() {
 
   const handleLangChange = async (newLang: Lang) => {
     setLang(newLang)
+    // 若提示词仍是某语言的默认值，随语言切换自动更新
+    if (isDefaultPrompt(systemPromptTemplate)) {
+      setSystemPromptTemplate(DEFAULT_SYSTEM_PROMPTS[newLang])
+    }
     await window.electronAPI.setConfig({ language: newLang })
   }
 
@@ -537,7 +545,7 @@ export default function SettingsPage() {
               style={{ ...styles.input, resize: 'vertical' as const, fontFamily: 'monospace', fontSize: 12 }}
             />
             <button
-              onClick={() => setSystemPromptTemplate(DEFAULT_TEMPLATE)}
+              onClick={() => setSystemPromptTemplate(DEFAULT_SYSTEM_PROMPTS[lang])}
               style={{ ...styles.secondaryButton, marginTop: 6 }}
             >
               {t(lang, 'btnResetDefault')}
