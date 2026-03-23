@@ -131,11 +131,11 @@ EOF
 
 # ── 自动注册 hook ─────────────────────────────────────────────────────────────
 if command -v openclaw &>/dev/null; then
-  openclaw hooks enable aibaji --workspace "${WORKSPACE}"
+  openclaw hooks install "${DEST}"
   echo ">> Hook 已注册"
 else
   echo ">> openclaw 未找到，请手动运行："
-  echo "   openclaw hooks enable aibaji --workspace ${WORKSPACE}"
+  echo "   openclaw hooks install ${DEST}"
 fi
 
 echo ">> 完成！爱巴基将监听 http://localhost:${PORT}"
