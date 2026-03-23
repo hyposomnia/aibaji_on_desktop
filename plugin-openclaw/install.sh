@@ -24,25 +24,19 @@ cat > "${DEST}/HOOK.md" << 'EOF'
 ---
 name: aibaji
 description: "Forward OpenClaw work status to Aibaji Desktop"
-metadata:
-  openclaw:
-    emoji: "🎭"
-    events:
-      - command:new
-      - command:stop
-      - message:received
-      - message:sent
-      - tool_result_persist
-    os: ["darwin", "linux"]
+metadata: {"openclaw":{"emoji":"🎭","events":["command:new","command:stop","message:received","message:sent","tool_result_persist"]}}
 ---
 EOF
 
 # ── handler.ts ───────────────────────────────────────────────────────────────
 cat > "${DEST}/handler.ts" << 'EOF'
 import { readFileSync, existsSync } from 'fs'
-import { join } from 'path'
-import * as http from 'http'
-import * as https from 'https'
+import { fileURLToPath } from 'url'
+import { join, dirname } from 'path'
+import type { HookHandler } from 'openclaw/hooks'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
 
 const CONFIG_PATH = join(__dirname, 'config.json')
 const cfg = existsSync(CONFIG_PATH)
@@ -62,7 +56,7 @@ const DEFAULT_MESSAGES = {
 
 const timestamps: number[] = []
 
-const handler = async (event: any): Promise<void> => {
+const handler: HookHandler = async (event) => {
   const message = mapEvent(event, cfg.messages ?? DEFAULT_MESSAGES)
   if (!message) return
 
@@ -72,7 +66,7 @@ const handler = async (event: any): Promise<void> => {
   if (timestamps.length >= WINDOW_LIMIT) return
   timestamps.push(now)
 
-  sendAsync({ event: event.type, message }, SERVER_URL, TOKEN)
+  sendAsync({ event: `${event.type}:${event.action ?? ''}`.replace(/:$/, ''), message }, SERVER_URL, TOKEN)
 }
 
 function mapEvent(event: any, tpl: Record<string, string>): string | null {
@@ -93,23 +87,13 @@ function mapEvent(event: any, tpl: Record<string, string>): string | null {
 }
 
 function sendAsync(body: object, serverUrl: string, token: string): void {
-  const data = JSON.stringify(body)
-  const url = new URL(`${serverUrl}/event`)
-  const lib = url.protocol === 'https:' ? https : http
-  const req = lib.request({
-    hostname: url.hostname,
-    port: url.port || (url.protocol === 'https:' ? 443 : 80),
-    path: url.pathname,
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  if (token) headers['Authorization'] = `Bearer ${token}`
+  fetch(`${serverUrl}/event`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Content-Length': Buffer.byteLength(data),
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-  })
-  req.on('error', () => {})
-  req.write(data)
-  req.end()
+    headers,
+    body: JSON.stringify(body),
+  }).catch(() => {})
 }
 
 export default handler
