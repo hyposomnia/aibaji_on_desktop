@@ -62,6 +62,28 @@ Inside Claude Code, run these two commands:
 
 No restart required. The plugin takes effect on the next tool call.
 
+### Step 3 (Optional): OpenClaw Plugin
+
+If you use [OpenClaw](https://openclaw.ai), install the hook for a specific agent with a single command:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/hyposomnia/aibaji_on_desktop/main/plugin-openclaw/install.sh \
+  | bash -s -- <agentId> [port]
+```
+
+- `agentId` — your OpenClaw agent name, maps to `~/.openclaw/workspace-<agentId>`
+- `port` — port of the Aibaji instance to forward events to (default: `5287`)
+
+The script installs the hook files and automatically runs `openclaw hooks enable aibaji` if `openclaw` is in your PATH.
+
+**Multiple instances:** Each agent can target a separate Aibaji instance on a different port. Launch additional instances with a different `--user-data-dir`:
+
+```bash
+open -n /Applications/aibaji_desktop.app --args \
+  --user-data-dir="$HOME/Library/Application Support/aibaji-work"
+# Then change the port to 5288 in Settings
+```
+
 ---
 
 ## Character Video Assets

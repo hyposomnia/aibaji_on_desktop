@@ -62,6 +62,28 @@ Claude Code 内で以下の 2 つのコマンドを実行：
 
 再起動不要。次のツール呼び出しからイベントの転送が始まります。
 
+### ステップ 3（オプション）：OpenClaw プラグイン
+
+[OpenClaw](https://openclaw.ai) を使用している場合、1 つのコマンドで指定した agent に hook をインストールできます：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/hyposomnia/aibaji_on_desktop/main/plugin-openclaw/install.sh \
+  | bash -s -- <agentId> [port]
+```
+
+- `agentId` — OpenClaw の agent 名。`~/.openclaw/workspace-<agentId>` に対応します
+- `port` — 転送先の Aibaji インスタンスのポート（デフォルト：`5287`）
+
+スクリプトが hook ファイルをインストールし、`openclaw` が PATH にあれば `openclaw hooks enable aibaji` を自動実行します。
+
+**マルチインスタンス：** 各 agent を別々の Aibaji インスタンス・ポートに対応させることができます。異なる `--user-data-dir` で追加インスタンスを起動します：
+
+```bash
+open -n /Applications/aibaji_desktop.app --args \
+  --user-data-dir="$HOME/Library/Application Support/aibaji-work"
+# その後、設定でポートを 5288 に変更
+```
+
 ---
 
 ## キャラクター動画素材の準備

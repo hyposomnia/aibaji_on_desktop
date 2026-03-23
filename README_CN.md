@@ -62,6 +62,28 @@ npm run pack   # 输出 desktop/dist/aibaji_desktop-*.dmg
 
 安装完成后无需重启，下一次工具调用即开始转发事件。
 
+### 第三步（可选）：OpenClaw 插件
+
+如果你使用 [OpenClaw](https://openclaw.ai)，一条命令即可为指定 agent 安装 hook：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/hyposomnia/aibaji_on_desktop/main/plugin-openclaw/install.sh \
+  | bash -s -- <agentId> [port]
+```
+
+- `agentId` — OpenClaw agent 名称，对应 `~/.openclaw/workspace-<agentId>`
+- `port` — 目标爱巴基实例的端口（默认 `5287`）
+
+脚本会安装 hook 文件，若 `openclaw` 在 PATH 中则自动执行 `openclaw hooks enable aibaji`。
+
+**多实例：** 每个 agent 可各自对应一个独立的爱巴基实例和端口。通过不同 `--user-data-dir` 启动额外实例：
+
+```bash
+open -n /Applications/aibaji_desktop.app --args \
+  --user-data-dir="$HOME/Library/Application Support/aibaji-work"
+# 然后在设置中将端口改为 5288
+```
+
 ---
 
 ## 准备角色视频资源
