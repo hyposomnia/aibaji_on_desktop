@@ -1,31 +1,14 @@
-import { readFileSync, existsSync } from 'fs'
-import { fileURLToPath } from 'url'
-import { join, dirname } from 'path'
 import type { HookHandler } from 'openclaw/hooks'
 
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = dirname(__filename)
-
-const CONFIG_PATH = join(__dirname, 'config.json')
-const cfg = existsSync(CONFIG_PATH)
-  ? JSON.parse(readFileSync(CONFIG_PATH, 'utf-8'))
-  : {}
-
-const SERVER_URL: string = cfg.server_url ?? 'http://localhost:5287'
-const TOKEN: string = cfg.token ?? ''
-const WINDOW_MS: number = cfg.rateLimit?.windowMs ?? 60000
-const WINDOW_LIMIT: number = cfg.rateLimit?.limit ?? 5
-
-const DEFAULT_MESSAGES = {
-  UserPromptSubmit: 'Your instruction has been received.',
-  Stop: 'Task complete',
-  PostToolUse: '{tool} finished',
-}
+const SERVER_URL = 'http://localhost:5287'
+const TOKEN = ''
+const WINDOW_MS = 60000
+const WINDOW_LIMIT = 5
 
 const timestamps: number[] = []
 
 const handler: HookHandler = async (event) => {
-  const message = mapEvent(event, cfg.messages ?? DEFAULT_MESSAGES)
+  const message = mapEvent(event)
   if (!message) return
 
   const now = Date.now()
@@ -34,34 +17,25 @@ const handler: HookHandler = async (event) => {
   if (timestamps.length >= WINDOW_LIMIT) return
   timestamps.push(now)
 
-  sendAsync({ event: `${event.type}:${event.action ?? ''}`.replace(/:$/, ''), message }, SERVER_URL, TOKEN)
+  const eventName = event.action ? `${event.type}:${event.action}` : event.type
+  fetch(`${SERVER_URL}/event`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ event: eventName, message }),
+  }).catch(() => {})
 }
 
-function mapEvent(event: any, tpl: Record<string, string>): string | null {
+function mapEvent(event: any): string | null {
   const { type, action } = event
-  if (type === 'command' && action === 'new')
-    return tpl.UserPromptSubmit ?? DEFAULT_MESSAGES.UserPromptSubmit
-  if (type === 'command' && action === 'stop')
-    return tpl.Stop ?? DEFAULT_MESSAGES.Stop
-  if (type === 'message' && action === 'received')
-    return tpl.UserPromptSubmit ?? DEFAULT_MESSAGES.UserPromptSubmit
-  if (type === 'message' && action === 'sent')
-    return tpl.Stop ?? DEFAULT_MESSAGES.Stop
+  if (type === 'command' && action === 'new') return 'Your instruction has been received.'
+  if (type === 'command' && action === 'stop') return 'Task complete'
+  if (type === 'message' && action === 'received') return 'Your instruction has been received.'
+  if (type === 'message' && action === 'sent') return 'Task complete'
   if (type === 'tool_result_persist') {
     const tool: string = event.context?.toolName ?? ''
-    return (tpl.PostToolUse ?? DEFAULT_MESSAGES.PostToolUse).replace('{tool}', tool)
+    return tool ? `${tool} finished` : 'Tool finished'
   }
   return null
-}
-
-function sendAsync(body: object, serverUrl: string, token: string): void {
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-  if (token) headers['Authorization'] = `Bearer ${token}`
-  fetch(`${serverUrl}/event`, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify(body),
-  }).catch(() => {})
 }
 
 export default handler
