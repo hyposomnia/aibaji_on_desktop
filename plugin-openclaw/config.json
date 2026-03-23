@@ -1,0 +1,13 @@
+{
+  "server_url": "http://localhost:5287",
+  "token": "",
+  "messages": {
+    "UserPromptSubmit": "Your instruction has been received.",
+    "Stop": "Task complete",
+    "PostToolUse": "{tool} finished"
+  },
+  "rateLimit": {
+    "windowMs": 60000,
+    "limit": 5
+  }
+}

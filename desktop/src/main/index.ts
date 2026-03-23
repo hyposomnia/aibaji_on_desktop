@@ -226,8 +226,4 @@ app.on('before-quit', async () => {
   await stopServer()
 })
 
-// 防止多实例
-const gotLock = app.requestSingleInstanceLock()
-if (!gotLock) {
-  app.quit()
-}
+// 多实例支持：通过不同 --user-data-dir 启动参数隔离各实例，无需单例锁
