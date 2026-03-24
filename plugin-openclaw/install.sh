@@ -28,18 +28,14 @@ metadata: {"openclaw":{"emoji":"🎭","events":["command:new","command:stop","me
 ---
 EOF
 
-# ── handler.ts（端口在安装时内联，无需读取配置文件）────────────────────────
-cat > "${DEST}/handler.ts" << EOF
-import type { HookHandler } from 'openclaw/hooks'
-
+# ── handler.js（CJS，端口在安装时内联）──────────────────────────────────────
+cat > "${DEST}/handler.js" << EOF
 const SERVER_URL = 'http://localhost:${PORT}'
-const TOKEN = ''
 const WINDOW_MS = 60000
 const WINDOW_LIMIT = 5
+const timestamps = []
 
-const timestamps: number[] = []
-
-const handler: HookHandler = async (event) => {
+const handler = async (event) => {
   const message = mapEvent(event)
   if (!message) return
 
@@ -57,20 +53,21 @@ const handler: HookHandler = async (event) => {
   }).catch(() => {})
 }
 
-function mapEvent(event: any): string | null {
+function mapEvent(event) {
   const { type, action } = event
   if (type === 'command' && action === 'new') return 'Your instruction has been received.'
   if (type === 'command' && action === 'stop') return 'Task complete'
   if (type === 'message' && action === 'received') return 'Your instruction has been received.'
   if (type === 'message' && action === 'sent') return 'Task complete'
   if (type === 'tool_result_persist') {
-    const tool: string = event.context?.toolName ?? ''
+    const tool = (event.context && event.context.toolName) || ''
     return tool ? \`\${tool} finished\` : 'Tool finished'
   }
   return null
 }
 
-export default handler
+module.exports = handler
+module.exports.default = handler
 EOF
 
 # ── config.json（含实际端口）─────────────────────────────────────────────────
