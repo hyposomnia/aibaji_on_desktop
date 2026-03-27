@@ -1,25 +1,19 @@
 #!/usr/bin/env bash
-# 从 git 一键安装爱巴基 OpenClaw Hook
+# 一键安装爱巴基 OpenClaw Hook（全局，适用所有 agent）
 #
-# 用法（推荐）:
-#   curl -fsSL https://raw.githubusercontent.com/hyposomnia/aibaji_on_desktop/main/plugin-openclaw/install.sh \
-#     | bash -s -- <agentId> [port]
-#
-# 示例:
-#   curl ... | bash -s -- main          # agent "main"，端口 5287
-#   curl ... | bash -s -- work 5288     # agent "work"，端口 5288
+# 用法：
+#   curl -fsSL https://raw.githubusercontent.com/hyposomnia/aibaji_on_desktop/main/plugin-openclaw/install.sh | bash
+#   curl -fsSL ... | bash -s -- 5288   # 自定义端口
 
 set -euo pipefail
 
-AGENT_ID="${1:?用法: install.sh <agentId> [port]}"
-PORT="${2:-5287}"
-WORKSPACE="${HOME}/.openclaw/workspace-${AGENT_ID}"
-DEST="${WORKSPACE}/hooks/aibaji"
+PORT="${1:-5287}"
+DEST="$HOME/.openclaw/hooks/aibaji"
 
-echo ">> 安装到 ${DEST}（端口 ${PORT}）..."
+echo ">> 安装爱巴基 OpenClaw Hook（端口 ${PORT}）..."
 mkdir -p "${DEST}"
 
-# ── HOOK.md ─────────────────────────────────────────────────────────────────
+# ── HOOK.md ──────────────────────────────────────────────────────────────────
 cat > "${DEST}/HOOK.md" << 'EOF'
 ---
 name: aibaji
@@ -28,7 +22,7 @@ metadata: {"openclaw":{"emoji":"🎭","events":["message:received","message:sent
 ---
 EOF
 
-# ── handler.js（CJS，端口在安装时内联）──────────────────────────────────────
+# ── handler.js（CJS，端口在安装时内联）───────────────────────────────────────
 cat > "${DEST}/handler.js" << EOF
 const SERVER_URL = 'http://localhost:${PORT}'
 const WINDOW_MS = 60000
@@ -85,28 +79,19 @@ function post(eventName, message) {
   sendEvent(eventName, message)
 }
 
-function postHeartbeat(eventName, message) {
-  sendEvent(eventName, message)
-}
-
 function scheduleHeartbeats(sessionKey, startTime) {
   return POLL_INTERVALS.map((delay, i) =>
     setTimeout(() => {
       if (!activeSessions.has(sessionKey)) return
-
       const elapsed = formatElapsed(Date.now() - startTime)
       const isLast = i === POLL_INTERVALS.length - 1
       const active = isSessionLaneActive(sessionKey)
-
       if (active === false) {
         clearSession(sessionKey)
-        postHeartbeat('message:sent', 'Task complete.')
+        sendEvent('message:sent', 'Task complete.')
         return
       }
-
-      const suffix = isLast ? ' (last check)' : ''
-      postHeartbeat('heartbeat', \`Still working… \${elapsed} elapsed.\${suffix}\`)
-
+      sendEvent('heartbeat', \`Still working… \${elapsed} elapsed.\${isLast ? ' (last check)' : ''}\`)
       if (isLast) clearSession(sessionKey)
     }, delay)
   )
@@ -119,23 +104,19 @@ const handler = async (event) => {
   if (type === 'message' && action === 'received') {
     clearSession(sessionKey)
     const startTime = Date.now()
-    const timers = scheduleHeartbeats(sessionKey, startTime)
-    activeSessions.set(sessionKey, { startTime, timers })
+    activeSessions.set(sessionKey, { startTime, timers: scheduleHeartbeats(sessionKey, startTime) })
     post('message:received', 'Your instruction has been received.')
     return
   }
-
   if (type === 'message' && action === 'sent') {
     clearSession(sessionKey)
     post('message:sent', 'Task complete.')
     return
   }
-
   if (type === 'agent' && action === 'bootstrap') {
     post('agent:bootstrap', "I'm ready.")
     return
   }
-
   if (type === 'command' && (action === 'new' || action === 'reset')) {
     clearSession(sessionKey)
     post(\`command:\${action}\`, 'Starting a new session.')
@@ -147,22 +128,17 @@ module.exports = handler
 module.exports.default = handler
 EOF
 
-# ── config.json（含实际端口）─────────────────────────────────────────────────
-cat > "${DEST}/config.json" << EOF
-{
-  "server_url": "http://localhost:${PORT}",
-  "token": "",
-  "rateLimit": { "windowMs": 60000, "limit": 5 }
-}
-EOF
-
-# ── 自动注册 hook ─────────────────────────────────────────────────────────────
-if command -v openclaw &>/dev/null; then
-  openclaw hooks install "${DEST}"
-  echo ">> Hook 已注册"
+# ── 重载 gateway ──────────────────────────────────────────────────────────────
+if pkill -USR1 -f openclaw-hooks 2>/dev/null; then
+  echo ">> Gateway 已重载"
 else
-  echo ">> openclaw 未找到，请手动运行："
-  echo "   openclaw hooks install ${DEST}"
+  echo ">> 未检测到运行中的 gateway，请手动重启 OpenClaw"
 fi
 
-echo ">> 完成！爱巴基将监听 http://localhost:${PORT}"
+# ── 验证 ──────────────────────────────────────────────────────────────────────
+sleep 1
+if command -v openclaw &>/dev/null && openclaw hooks list 2>/dev/null | grep -q aibaji; then
+  echo ">> 安装完成！向 agent 发一条消息，爱巴基即会响应。"
+else
+  echo ">> 文件已写入 ${DEST}，gateway 重启后自动生效。"
+fi
