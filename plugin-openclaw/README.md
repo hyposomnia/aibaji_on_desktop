@@ -2,24 +2,61 @@
 
 将 OpenClaw agent 工作状态实时转发到爱巴基桌面，支持长任务保活心跳与兜底完成检测。
 
-## 安装
+## 前提条件
 
-一条命令完成安装并自动注册 Hook：
+- 已安装 OpenClaw，gateway 正在运行
+- 爱巴基桌面版已启动，默认监听端口 `5287`
+
+## 安装流程
+
+### 第一步：确认 agentId
+
+agentId 对应 `~/.openclaw/workspace-<agentId>` 目录名：
+
+```bash
+ls ~/.openclaw | grep workspace
+# 输出示例：workspace-main  workspace-work  workspace-study
+```
+
+取 `workspace-` 之后的部分（如 `main`、`work`、`study`）作为 `<agentId>`。
+
+### 第二步：运行安装脚本
 
 ```bash
 # agent "main"，使用默认端口 5287
 curl -fsSL https://raw.githubusercontent.com/hyposomnia/aibaji_on_desktop/main/plugin-openclaw/install.sh \
   | bash -s -- main
 
-# agent "work"，使用端口 5288
+# agent "work"，使用端口 5288（对应第二个爱巴基实例）
 curl -fsSL https://raw.githubusercontent.com/hyposomnia/aibaji_on_desktop/main/plugin-openclaw/install.sh \
   | bash -s -- work 5288
 ```
 
-命令格式：`bash -s -- <agentId> [port]`
+脚本会在 `~/.openclaw/workspace-<agentId>/hooks/aibaji/` 写入 `HOOK.md`、`handler.js`、`config.json`，并自动调用 `openclaw hooks install` 注册。
 
-- `agentId`：OpenClaw agent 名称，对应 `~/.openclaw/workspace-<agentId>`
-- `port`：爱巴基实例监听端口，默认 `5287`
+### 第三步：重载 gateway
+
+Hook 文件写入后，需要 gateway 重新加载才能生效。发送 `SIGUSR1` 触发热重载：
+
+```bash
+pkill -USR1 -f openclaw-hooks
+```
+
+或直接重启 OpenClaw gateway。
+
+### 第四步：验证安装
+
+```bash
+openclaw hooks list
+```
+
+输出中应出现：
+
+```
+✓ ready  │ 🎭 aibaji  │ Forward OpenClaw work status to Aibaji Desktop
+```
+
+确认后，向对应 agent 发一条消息，爱巴基角色应在数秒内做出响应。
 
 ## 多实例支持
 
