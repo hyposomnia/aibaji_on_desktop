@@ -1,4 +1,11 @@
 import { app, ipcMain, dialog } from 'electron'
+
+// 全局注入时间戳到所有 console.log
+const _origLog = console.log.bind(console)
+console.log = (...args) => {
+  const ts = new Date().toLocaleTimeString('zh-CN', { hour12: false })
+  _origLog(`[${ts}]`, ...args)
+}
 import * as path from 'path'
 import { initStore, getConfig, setConfig, registerHandlers as registerStoreHandlers } from './store'
 import { getCharacters, getOutfits, getEmotions } from './characterLoader'
