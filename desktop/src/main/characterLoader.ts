@@ -3,7 +3,7 @@ import * as path from 'path'
 
 /**
  * 从文件名提取表情名
- * 例：平静1.1.webm → 平静，微笑.webm → 微笑
+ * 例：平静1.1.webm → 平静，微笑.mp4 → 微笑
  */
 function extractEmotion(filename: string): string {
   // 去掉扩展名
@@ -29,13 +29,13 @@ function listDirs(dirPath: string): string[] {
 }
 
 /**
- * 获取目录下的所有 .webm 文件名
+ * 获取目录下的所有视频文件名（.webm / .mp4）
  */
-function listWebmFiles(dirPath: string): string[] {
+function listVideoFiles(dirPath: string): string[] {
   try {
     return fs
       .readdirSync(dirPath, { withFileTypes: true })
-      .filter((f) => f.isFile() && f.name.endsWith('.webm'))
+      .filter((f) => f.isFile() && (f.name.endsWith('.webm') || f.name.endsWith('.mp4')))
       .map((f) => f.name)
       .sort()
   } catch {
@@ -62,7 +62,7 @@ export function getOutfits(dataPath: string, char: string): string[] {
  */
 export function getEmotions(dataPath: string, char: string, outfit: string): string[] {
   const dir = path.join(dataPath, char, outfit)
-  const files = listWebmFiles(dir)
+  const files = listVideoFiles(dir)
   const emotionSet = new Set(files.map(extractEmotion).filter((e) => e.length > 0))
   return Array.from(emotionSet).sort()
 }
@@ -77,7 +77,7 @@ export function getVideoFiles(
   emotion: string
 ): string[] {
   const dir = path.join(dataPath, char, outfit)
-  const files = listWebmFiles(dir)
+  const files = listVideoFiles(dir)
   return files
     .filter((f) => extractEmotion(f) === emotion)
     .map((f) => path.join(dir, f))
@@ -94,7 +94,7 @@ export function getIdlePool(
   outfit: string
 ): { calm: string[]; other: string[] } {
   const dir = path.join(dataPath, char, outfit)
-  const files = listWebmFiles(dir)
+  const files = listVideoFiles(dir)
   const calm: string[] = []
   const other: string[] = []
 

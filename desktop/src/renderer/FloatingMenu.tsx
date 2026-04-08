@@ -115,7 +115,7 @@ export default function FloatingMenu({ x, y, onClose }: Props) {
             label="大小"
             value={scale}
             min={0.3}
-            max={2.0}
+            max={4.0}
             step={0.05}
             display={`${Math.round(scale * 100)}%`}
             onChange={handleScale}

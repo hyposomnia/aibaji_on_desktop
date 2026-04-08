@@ -91,13 +91,42 @@ export function updateScale(scale: number): void {
   const config = getConfig()
   const w = Math.round(config.window.baseWidth * scale)
   const h = Math.round(config.window.baseHeight * scale)
+  // 保存当前位置：setSize 可能触发 macOS 重新约束坐标（同 setAlwaysOnTop）
+  const [x, y] = mainWindow.getPosition()
   mainWindow.setSize(w, h)
+  mainWindow.setPosition(x, y)
   setConfig({ window: { ...config.window, scale } })
 }
 
 /**
- * 注册窗口相关 IPC handlers
+ * Main 进程拖拽：通过轮询 getCursorScreenPoint 移动窗口
+ * 避免依赖 renderer mousemove（大窗口高速拖拽时鼠标会跑出窗口边界导致事件丢失）
  */
+let dragState: { startWinX: number; startWinY: number; startMouseX: number; startMouseY: number } | null = null
+let dragInterval: ReturnType<typeof setInterval> | null = null
+
+function startWindowDrag(startMouseX: number, startMouseY: number): void {
+  if (!mainWindow) return
+  const [startWinX, startWinY] = mainWindow.getPosition()
+  dragState = { startWinX, startWinY, startMouseX, startMouseY }
+  if (dragInterval) clearInterval(dragInterval)
+  dragInterval = setInterval(() => {
+    if (!dragState || !mainWindow) return
+    const cursor = electronScreen.getCursorScreenPoint()
+    const dx = cursor.x - dragState.startMouseX
+    const dy = cursor.y - dragState.startMouseY
+    mainWindow.setPosition(Math.round(dragState.startWinX + dx), Math.round(dragState.startWinY + dy))
+  }, 16)
+}
+
+function stopWindowDrag(): void {
+  dragState = null
+  if (dragInterval) {
+    clearInterval(dragInterval)
+    dragInterval = null
+  }
+}
+
 /**
  * 将窗口移动到当前光标所在屏幕的正中间
  */
@@ -124,8 +153,12 @@ export function registerWindowHandlers(): void {
     return { x, y }
   })
 
-  ipcMain.on('set-window-position', (_, x: number, y: number) => {
-    if (mainWindow) mainWindow.setPosition(Math.round(x), Math.round(y))
+  ipcMain.on('start-drag', (_, startMouseX: number, startMouseY: number) => {
+    startWindowDrag(startMouseX, startMouseY)
+  })
+
+  ipcMain.on('stop-drag', () => {
+    stopWindowDrag()
   })
 
   ipcMain.on('set-ignore-mouse-events', (_, ignore: boolean) => {

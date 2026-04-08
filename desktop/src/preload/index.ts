@@ -48,7 +48,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   centerWindow: () => ipcRenderer.send('center-window'),
   // 窗口位置（自定义拖拽用）
   getWindowPosition: (): Promise<{ x: number; y: number }> => ipcRenderer.invoke('get-window-position'),
-  setWindowPosition: (x: number, y: number) => ipcRenderer.send('set-window-position', x, y),
+  startDrag: (startMouseX: number, startMouseY: number) => ipcRenderer.send('start-drag', startMouseX, startMouseY),
+  stopDrag: () => ipcRenderer.send('stop-drag'),
   // 退出
   quit: () => ipcRenderer.send('quit'),
   // 通知 main 进程渲染层已就绪（IPC 监听已注册）

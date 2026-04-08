@@ -25,7 +25,8 @@ declare global {
       centerWindow: () => void
       randomOutfit: () => void
       getWindowPosition: () => Promise<{ x: number; y: number }>
-      setWindowPosition: (x: number, y: number) => void
+      startDrag: (startMouseX: number, startMouseY: number) => void
+      stopDrag: () => void
       notifyReady: () => void
     }
   }
@@ -35,13 +36,11 @@ export default function VideoPlayer() {
   const videoRef = useRef<HTMLVideoElement>(null)
   const lockedRef = useRef(false)
 
-  // 自定义拖拽状态
+  // 自定义拖拽状态（窗口实际移动由 main 进程轮询处理，renderer 只追踪 moved 用于区分点击和拖拽）
   const dragRef = useRef<{
     dragging: boolean
     startMouseX: number
     startMouseY: number
-    startWinX: number
-    startWinY: number
     moved: boolean
   } | null>(null)
 
@@ -85,7 +84,8 @@ export default function VideoPlayer() {
       lockedRef.current = locked
     })
 
-    // 自定义拖拽：mousemove / mouseup 绑定到 window，确保拖出元素边界仍有效
+    // 自定义拖拽：renderer 只追踪 moved 标志，窗口实际移动由 main 进程轮询完成
+    // 这样即使鼠标跑出窗口上边界（大窗口高速上拖时的常见问题）也不影响拖拽
     const handleMouseMove = (e: MouseEvent) => {
       const drag = dragRef.current
       if (!drag || !drag.dragging) return
@@ -94,12 +94,10 @@ export default function VideoPlayer() {
       if (Math.abs(dx) > 2 || Math.abs(dy) > 2) {
         drag.moved = true
       }
-      if (drag.moved) {
-        api.setWindowPosition(drag.startWinX + dx, drag.startWinY + dy)
-      }
     }
 
     const handleMouseUp = () => {
+      if (dragRef.current) api.stopDrag()
       dragRef.current = null
     }
 
@@ -119,20 +117,19 @@ export default function VideoPlayer() {
     window.electronAPI?.sendVideoEnded()
   }
 
-  const handleMouseDown = async (e: React.MouseEvent) => {
+  const handleMouseDown = (e: React.MouseEvent) => {
     if (e.button !== 0) return
     if (lockedRef.current) return
     const api = window.electronAPI
     if (!api) return
-    const pos = await api.getWindowPosition()
     dragRef.current = {
       dragging: true,
       startMouseX: e.screenX,
       startMouseY: e.screenY,
-      startWinX: pos.x,
-      startWinY: pos.y,
       moved: false,
     }
+    // 通知 main 进程开始拖拽轮询，由其直接调用 screen.getCursorScreenPoint() 移动窗口
+    api.startDrag(e.screenX, e.screenY)
   }
 
   const handleDoubleClick = () => {

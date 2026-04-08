@@ -30,8 +30,8 @@ function createTrayIcon(): Electron.NativeImage {
  * 创建大小子菜单
  */
 function buildSizeMenu(currentScale: number): MenuItemConstructorOptions[] {
-  const scales = [0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.2, 1.5]
-  const labels = ['50%', '60%', '70%', '80%', '90%', '100%', '120%', '150%']
+  const scales = [0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.2, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0]
+  const labels = ['50%', '60%', '70%', '80%', '90%', '100%', '120%', '150%', '200%', '250%', '300%', '350%', '400%']
 
   return scales.map((scale, i): MenuItemConstructorOptions => ({
     label: labels[i],
