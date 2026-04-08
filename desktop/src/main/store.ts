@@ -86,7 +86,7 @@ const defaults: AppConfig = {
     x: 100,
     y: 100,
     baseWidth: 400,
-    baseHeight: 600,
+    baseHeight: 400,
   },
   llm: {
     apiMode: 'openai',

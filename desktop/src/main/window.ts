@@ -115,7 +115,9 @@ function startWindowDrag(startMouseX: number, startMouseY: number): void {
     const cursor = electronScreen.getCursorScreenPoint()
     const dx = cursor.x - dragState.startMouseX
     const dy = cursor.y - dragState.startMouseY
-    mainWindow.setPosition(Math.round(dragState.startWinX + dx), Math.round(dragState.startWinY + dy))
+    const newX = Math.round(dragState.startWinX + dx)
+    const newY = Math.round(dragState.startWinY + dy)
+    mainWindow.setPosition(newX, newY)
   }, 16)
 }
 

@@ -149,7 +149,7 @@ export default function VideoPlayer() {
         width: '100%',
         height: '100%',
         display: 'flex',
-        alignItems: 'center',
+        alignItems: 'flex-start',
         justifyContent: 'center',
         background: 'transparent',
         cursor: 'default',
